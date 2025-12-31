@@ -217,12 +217,9 @@ function handleGetRevenues(phone, filters) {
   // 取得營業額資料
   let revenues = getSheetData(SHEET_REVENUES);
   
-  // 非管理員只能看當日自己的
+  // 非管理員只能看自己的
   if (!isAdmin) {
-    const today = formatDate(new Date());
-    revenues = revenues.filter(r => 
-      r['submitted_by_phone'] === phone && formatDate(r['日期']) === today
-    );
+    revenues = revenues.filter(r => r['submitted_by_phone'] === phone);
   } else {
     // 管理員套用篩選條件
     if (filters) {
