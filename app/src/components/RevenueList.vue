@@ -16,6 +16,10 @@
               <span class="amount-label">租金</span>
               <span class="amount-value muted">-{{ formatCurrency(item.rent) }}</span>
             </div>
+            <div v-if="getTotalCosts(item) > 0" class="amount-row">
+              <span class="amount-label">其他成本</span>
+              <span class="amount-value muted">-{{ formatCurrency(getTotalCosts(item)) }}</span>
+            </div>
             <div class="amount-row profit">
               <span class="amount-label">淨利</span>
               <span class="amount-value" :class="profitClass(item.profit)">
@@ -60,6 +64,10 @@ const formatCurrency = (value: number): string => {
 
 const profitClass = (profit: number): string => {
   return profit >= 0 ? 'success' : 'error'
+}
+
+const getTotalCosts = (item: Revenue): number => {
+  return (item.parking_fee || 0) + (item.cleaning_fee || 0) + (item.other_cost || 0)
 }
 </script>
 

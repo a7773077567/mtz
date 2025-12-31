@@ -69,6 +69,9 @@ const handleSubmit = async (data: {
   market_id: string
   amount: number
   rent: number
+  parking_fee: number
+  cleaning_fee: number
+  other_cost: number
   note: string
 }) => {
   if (!auth.user.value) return

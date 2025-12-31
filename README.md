@@ -5,7 +5,7 @@
 ## 功能
 
 - 📱 手機號碼快速登入
-- 💰 提交營業額（含租金自動計算）
+- 💰 提交營業額（含租金自動計算、成本記錄）
 - 📊 查看營業紀錄
 - 📈 管理員統計報表
 
@@ -22,13 +22,12 @@
 
 #### 1.2 建立資料表
 
-在試算表中建立以下 4 個 Sheet（點擊底部 `+` 新增）：
+在試算表中建立以下 3 個 Sheet（點擊底部 `+` 新增）：
 
 | Sheet 名稱 | 用途 |
 |-----------|------|
 | `users` | 使用者資料 |
 | `markets` | 市場資料 |
-| `special_dates` | 特殊日期租金 |
 | `revenues` | 營業額紀錄 |
 
 #### 1.3 填入欄位標題
@@ -43,17 +42,14 @@
 名稱	地址	平日租金	假日租金	狀態	id
 ```
 
-**Sheet: `special_dates`**
-```
-日期	市場	租金	備註	market_id
-```
-
 **Sheet: `revenues`**
 ```
-日期	市場	營業額	租金	淨利	提交者	備註	提交時間	id	market_id	submitted_by_phone
+日期	市場	營業額	租金	停車費	清潔費	其他成本	淨利	提交者	備註	提交時間	id	market_id	submitted_by_phone
 ```
 
 > 💡 **提示**：可直接複製 `seed_data.md` 中的測試資料貼入各 Sheet
+
+> ⚠️ **重要**：`手機` 和 `submitted_by_phone` 欄位需設為「純文字」格式，避免手機號碼前導 0 被移除
 
 ---
 
@@ -69,7 +65,7 @@
 
 1. 刪除預設的 `function myFunction() {}` 
 2. 複製 `gas/Code.gs` 的全部內容貼上
-3. **修改第 5 行**，將 `YOUR_SPREADSHEET_ID` 替換成你的 Spreadsheet ID：
+3. **修改第 11 行**，將 `YOUR_SPREADSHEET_ID` 替換成你的 Spreadsheet ID：
 
 ```javascript
 const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID'; // ← 改這裡
@@ -204,6 +200,8 @@ mtz/
 │   │       ├── LoginView.vue
 │   │       ├── SubmitView.vue
 │   │       └── HistoryView.vue
+│   ├── public/
+│   │   └── 404.html              # GitHub Pages SPA 路由支援
 │   ├── .env.example
 │   ├── package.json
 │   └── vite.config.ts
@@ -235,6 +233,15 @@ mtz/
 **可能原因**：Google Sheet 中沒有該手機號碼
 
 **解決方式**：在 `users` Sheet 中新增使用者資料
+
+### Q: 篩選提交者時查不到資料
+
+**可能原因**：手機號碼格式問題（前導 0 被移除）
+
+**解決方式**：
+1. 選取 `手機` 和 `submitted_by_phone` 欄位
+2. 格式 → 數字 → 純文字
+3. 重新貼上資料
 
 ### Q: 部署後頁面空白
 

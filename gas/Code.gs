@@ -13,7 +13,6 @@ const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID'; // 替換成你的 Google Sheet ID
 // Sheet 名稱
 const SHEET_USERS = 'users';
 const SHEET_MARKETS = 'markets';
-const SHEET_SPECIAL_DATES = 'special_dates';
 const SHEET_REVENUES = 'revenues';
 
 // ========== 主要進入點 ==========
@@ -30,9 +29,6 @@ function doPost(e) {
         break;
       case 'getMarkets':
         result = handleGetMarkets();
-        break;
-      case 'getRent':
-        result = handleGetRent(request.market_id, request.date);
         break;
       case 'submitRevenue':
         result = handleSubmitRevenue(request);
@@ -97,12 +93,6 @@ function formatDate(date) {
   return date;
 }
 
-function isWeekend(dateStr) {
-  const date = new Date(dateStr);
-  const day = date.getDay();
-  return day === 0 || day === 6;
-}
-
 // ========== API 處理函數 ==========
 
 /**
@@ -135,7 +125,7 @@ function handleLogin(phone) {
 }
 
 /**
- * 取得市場列表
+ * 取得市場列表（含租金資訊）
  */
 function handleGetMarkets() {
   const markets = getSheetData(SHEET_MARKETS);
@@ -144,60 +134,19 @@ function handleGetMarkets() {
     .filter(m => m['狀態'] === '啟用')
     .map(m => ({
       id: m['id'],
-      name: m['名稱']
+      name: m['名稱'],
+      rent_weekday: m['平日租金'] || 0,
+      rent_weekend: m['假日租金'] || 0
     }));
   
   return { success: true, data: activeMarkets };
 }
 
 /**
- * 取得租金
- */
-function handleGetRent(marketId, date) {
-  if (!marketId || !date) {
-    return { success: false, error: '缺少必要參數' };
-  }
-  
-  // 先檢查特殊日期
-  const specialDates = getSheetData(SHEET_SPECIAL_DATES);
-  const special = specialDates.find(s => 
-    s['market_id'] === marketId && formatDate(s['日期']) === date
-  );
-  
-  if (special) {
-    return {
-      success: true,
-      data: {
-        rent: special['租金'],
-        is_special: true
-      }
-    };
-  }
-  
-  // 否則根據平日/假日
-  const markets = getSheetData(SHEET_MARKETS);
-  const market = markets.find(m => m['id'] === marketId);
-  
-  if (!market) {
-    return { success: false, error: '找不到市場資料' };
-  }
-  
-  const rent = isWeekend(date) ? market['假日租金'] : market['平日租金'];
-  
-  return {
-    success: true,
-    data: {
-      rent: rent,
-      is_special: false
-    }
-  };
-}
-
-/**
  * 提交營業額
  */
 function handleSubmitRevenue(request) {
-  const { phone, date, market_id, amount, rent, note } = request;
+  const { phone, date, market_id, amount, rent, parking_fee, cleaning_fee, other_cost, note } = request;
   
   if (!phone || !date || !market_id || amount === undefined || rent === undefined) {
     return { success: false, error: '缺少必要欄位' };
@@ -219,7 +168,11 @@ function handleSubmitRevenue(request) {
   }
   
   const id = generateId();
-  const profit = amount - rent;
+  const pFee = parking_fee || 0;
+  const cFee = cleaning_fee || 0;
+  const oCost = other_cost || 0;
+  const totalCost = rent + pFee + cFee + oCost;
+  const profit = amount - totalCost;
   const submittedAt = new Date();
   
   // 寫入資料
@@ -229,6 +182,9 @@ function handleSubmitRevenue(request) {
     market['名稱'],          // 市場
     amount,                  // 營業額
     rent,                    // 租金
+    pFee,                    // 停車費
+    cFee,                    // 清潔費
+    oCost,                   // 其他成本
     profit,                  // 淨利
     user['名稱'],            // 提交者
     note || '',              // 備註
@@ -297,6 +253,7 @@ function handleGetRevenues(phone, filters) {
   const summary = {
     total_amount: revenues.reduce((sum, r) => sum + (r['營業額'] || 0), 0),
     total_rent: revenues.reduce((sum, r) => sum + (r['租金'] || 0), 0),
+    total_costs: revenues.reduce((sum, r) => sum + (r['停車費'] || 0) + (r['清潔費'] || 0) + (r['其他成本'] || 0), 0),
     total_profit: revenues.reduce((sum, r) => sum + (r['淨利'] || 0), 0)
   };
   
@@ -308,6 +265,9 @@ function handleGetRevenues(phone, filters) {
     market_id: r['market_id'],
     amount: r['營業額'],
     rent: r['租金'],
+    parking_fee: r['停車費'] || 0,
+    cleaning_fee: r['清潔費'] || 0,
+    other_cost: r['其他成本'] || 0,
     profit: r['淨利'],
     submitted_by: r['提交者'],
     submitted_by_phone: r['submitted_by_phone'],

@@ -10,6 +10,8 @@ export interface User {
 export interface Market {
   id: string
   name: string
+  rent_weekday: number
+  rent_weekend: number
 }
 
 // Revenue Record
@@ -20,6 +22,9 @@ export interface Revenue {
   market_id: string
   amount: number
   rent: number
+  parking_fee: number
+  cleaning_fee: number
+  other_cost: number
   profit: number
   submitted_by: string
   submitted_by_phone: string
@@ -39,6 +44,7 @@ export interface RevenueFilters {
 export interface RevenueSummary {
   total_amount: number
   total_rent: number
+  total_costs: number
   total_profit: number
 }
 
@@ -62,8 +68,3 @@ export interface RevenuesResponse {
   summary: RevenueSummary
 }
 
-// Rent Response
-export interface RentResponse {
-  rent: number
-  is_special: boolean
-}

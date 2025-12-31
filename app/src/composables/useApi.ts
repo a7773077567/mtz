@@ -3,7 +3,6 @@ import type {
   LoginResponse,
   Market,
   RevenuesResponse,
-  RentResponse,
   RevenueFilters,
   User,
 } from '../types'
@@ -34,14 +33,9 @@ export function useApi() {
     return request<LoginResponse>('login', { phone })
   }
 
-  // 取得市場列表
+  // 取得市場列表（含租金資訊）
   const getMarkets = async (): Promise<ApiResponse<Market[]>> => {
     return request<Market[]>('getMarkets')
-  }
-
-  // 取得租金
-  const getRent = async (marketId: string, date: string): Promise<ApiResponse<RentResponse>> => {
-    return request<RentResponse>('getRent', { market_id: marketId, date })
   }
 
   // 提交營業額
@@ -51,6 +45,9 @@ export function useApi() {
     market_id: string
     amount: number
     rent: number
+    parking_fee?: number
+    cleaning_fee?: number
+    other_cost?: number
     note?: string
   }): Promise<ApiResponse<{ id: string }>> => {
     return request<{ id: string }>('submitRevenue', data)
@@ -72,9 +69,9 @@ export function useApi() {
   return {
     login,
     getMarkets,
-    getRent,
     submitRevenue,
     getRevenues,
     getUsers,
   }
 }
+

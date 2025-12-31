@@ -8,6 +8,10 @@
       <span class="stat-label">總租金</span>
       <span class="stat-value muted">{{ formatCurrency(props.summary.total_rent) }}</span>
     </div>
+    <div class="stat-item">
+      <span class="stat-label">總成本</span>
+      <span class="stat-value muted">{{ formatCurrency(props.summary.total_costs || 0) }}</span>
+    </div>
     <div class="stat-item highlight">
       <span class="stat-label">淨利</span>
       <span class="stat-value" :class="profitClass">{{ formatCurrency(props.summary.total_profit) }}</span>
@@ -39,7 +43,7 @@ const profitClass = computed(() => {
 <style scoped>
 .stats-summary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-sm);
   padding: var(--space-md);
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);

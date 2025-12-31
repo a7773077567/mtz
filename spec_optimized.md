@@ -34,7 +34,7 @@ VITE_GOOGLE_SCRIPT_URL=<Google Apps Script Web App URL>
 
 ### 設計原則
 - **風格**：現代、清晰、易讀，對比度適中（避免過高對比）
-- **RWD**：Mobile First，桌面版次要
+- **RWD**：Mobile First，桌面版加寬內容區
 - **互動體驗**：
   - API 請求時顯示簡潔 loading 動畫
   - 頁面切換使用 fade/slide 過場效果
@@ -83,16 +83,21 @@ VITE_GOOGLE_SCRIPT_URL=<Google Apps Script Web App URL>
 | 營業日期 | 日期選擇 | 預設今天，可選擇過去日期（補登） |
 | 地點 | 下拉選單 | 從「市場資料」表讀取（僅啟用的） |
 | 營業額 | 數字輸入 | 整數，必填 |
-| 租金 | 數字輸入 | 自動帶入（根據日期+市場），可手動覆蓋 |
+| 租金 | 數字輸入 | 自動帶入（根據平日/假日），可手動覆蓋 |
+| 停車費 | 數字輸入 | 選填，預設 0 |
+| 清潔費 | 數字輸入 | 選填，預設 0 |
+| 其他成本 | 數字輸入 | 選填，預設 0 |
 | 備註 | 文字輸入 | 選填 |
 
 #### 租金自動帶入邏輯
-1. 檢查 `special_dates` 是否有該日期 + 市場的特殊租金
-2. 若無，判斷該日期是平日或假日，帶入對應租金
+- 根據選擇的日期判斷是平日或假日，帶入對應租金
+- 平日：週一～週五
+- 假日：週六、週日
 
-#### 自動填入
-- 提交時間：自動使用當前時間
-- 提交者：使用目前登入的使用者
+#### 淨利計算
+```
+淨利 = 營業額 - 租金 - 停車費 - 清潔費 - 其他成本
+```
 
 #### 同市場同日多筆
 - 允許同一天同一市場提交多筆營業額（如早場、晚場）
@@ -121,9 +126,10 @@ VITE_GOOGLE_SCRIPT_URL=<Google Apps Script Web App URL>
 2. 市場
 3. 營業額
 4. 租金
-5. 淨利（營業額 - 租金）
-6. 提交者
-7. 備註
+5. 其他成本（停車費+清潔費+其他，有值時才顯示）
+6. 淨利
+7. 提交者（僅管理員）
+8. 備註
 
 ---
 
@@ -135,7 +141,8 @@ VITE_GOOGLE_SCRIPT_URL=<Google Apps Script Web App URL>
 |-----|---------|
 | 總營業額 | 篩選結果的 `amount` 加總 |
 | 總租金 | 篩選結果的 `rent` 加總 |
-| 總淨利 | 總營業額 - 總租金 |
+| 總成本 | 停車費 + 清潔費 + 其他成本 加總 |
+| 總淨利 | 總營業額 - 總租金 - 總成本 |
 
 ---
 
@@ -148,7 +155,7 @@ VITE_GOOGLE_SCRIPT_URL=<Google Apps Script Web App URL>
 | 欄位 | 類型 | 必填 | 說明 |
 |-----|------|-----|------|
 | 名稱 | string | ✓ | 使用者姓名（顯示用） |
-| 手機 | string | ✓ | 手機號碼（唯一，登入用） |
+| 手機 | string | ✓ | 手機號碼（唯一，登入用，純文字格式） |
 | 權限 | string | ✓ | `user` / `admin` |
 | 狀態 | string | ✓ | `啟用` / `停用` |
 | 建立時間 | datetime | ✓ | 建立時間 |
@@ -169,19 +176,7 @@ VITE_GOOGLE_SCRIPT_URL=<Google Apps Script Web App URL>
 
 ---
 
-### Sheet 3: `special_dates` (特殊日期租金)
-
-| 欄位 | 類型 | 必填 | 說明 |
-|-----|------|-----|------|
-| 日期 | date | ✓ | 特殊日期（如 2025-01-01） |
-| 市場 | string | ✓ | 市場名稱 |
-| 租金 | number | ✓ | 該日租金 |
-| 備註 | string | | 說明（如「跨年加價」） |
-| market_id | string | ✓ | 關聯市場 ID（程式用） |
-
----
-
-### Sheet 4: `revenues` (營業額)
+### Sheet 3: `revenues` (營業額)
 
 | 欄位 | 類型 | 必填 | 說明 |
 |-----|------|-----|------|
@@ -189,13 +184,16 @@ VITE_GOOGLE_SCRIPT_URL=<Google Apps Script Web App URL>
 | 市場 | string | ✓ | 市場名稱 |
 | 營業額 | number | ✓ | 當筆營業額（整數） |
 | 租金 | number | ✓ | 當筆租金 |
-| 淨利 | number | ✓ | = 營業額 - 租金（公式或提交時計算） |
+| 停車費 | number | | 停車費（預設 0） |
+| 清潔費 | number | | 清潔費（預設 0） |
+| 其他成本 | number | | 其他成本（預設 0） |
+| 淨利 | number | ✓ | = 營業額 - 租金 - 各項成本 |
 | 提交者 | string | ✓ | 使用者姓名 |
 | 備註 | string | | 備註 |
 | 提交時間 | datetime | ✓ | 實際提交時間 |
 | id | string | ✓ | UUID（程式用） |
 | market_id | string | ✓ | 關聯市場 ID（程式用） |
-| submitted_by_phone | string | ✓ | 提交者手機（程式用） |
+| submitted_by_phone | string | ✓ | 提交者手機（程式用，純文字格式） |
 
 ---
 
@@ -229,7 +227,7 @@ POST /exec
 { "success": false, "error": "此帳號已停用" }
 ```
 
-#### 2. 取得市場列表
+#### 2. 取得市場列表（含租金資訊）
 ```json
 POST /exec
 {
@@ -240,32 +238,13 @@ POST /exec
 {
   "success": true,
   "data": [
-    { "id": "m1", "name": "台北花博市集" },
-    { "id": "m2", "name": "新竹假日市集" }
+    { "id": "m1", "name": "台北花博市集", "rent_weekday": 400, "rent_weekend": 600 },
+    { "id": "m2", "name": "新竹假日市集", "rent_weekday": 0, "rent_weekend": 500 }
   ]
 }
 ```
 
-#### 3. 取得租金
-```json
-POST /exec
-{
-  "action": "getRent",
-  "market_id": "m1",
-  "date": "2025-01-15"
-}
-
-// Response
-{
-  "success": true,
-  "data": {
-    "rent": 500,
-    "is_special": false
-  }
-}
-```
-
-#### 4. 提交營業額
+#### 3. 提交營業額
 ```json
 POST /exec
 {
@@ -274,7 +253,10 @@ POST /exec
   "date": "2025-01-15",
   "market_id": "m1",
   "amount": 15000,
-  "rent": 500,
+  "rent": 400,
+  "parking_fee": 100,
+  "cleaning_fee": 0,
+  "other_cost": 50,
   "note": "天氣好"
 }
 
@@ -285,7 +267,7 @@ POST /exec
 }
 ```
 
-#### 5. 查詢營業額
+#### 4. 查詢營業額
 ```json
 POST /exec
 {
@@ -309,8 +291,11 @@ POST /exec
         "date": "2025-01-15",
         "market": "台北花博市集",
         "amount": 15000,
-        "rent": 500,
-        "profit": 14500,
+        "rent": 400,
+        "parking_fee": 100,
+        "cleaning_fee": 0,
+        "other_cost": 50,
+        "profit": 14450,
         "submitted_by": "王小明",
         "note": "天氣好",
         "submitted_at": "2025-01-15T18:30:00"
@@ -318,14 +303,15 @@ POST /exec
     ],
     "summary": {
       "total_amount": 150000,
-      "total_rent": 15000,
+      "total_rent": 12000,
+      "total_costs": 3000,
       "total_profit": 135000
     }
   }
 }
 ```
 
-#### 6. 取得使用者列表（管理員用）
+#### 5. 取得使用者列表（管理員用）
 ```json
 POST /exec
 {
@@ -349,40 +335,34 @@ POST /exec
 
 ```
 mtz/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml
-├── src/
-│   ├── assets/
-│   │   └── styles/
-│   │       └── main.css
-│   ├── components/
-│   │   ├── LoadingSpinner.vue
-│   │   ├── PhoneInput.vue
-│   │   ├── RevenueForm.vue
-│   │   ├── RevenueList.vue
-│   │   ├── RevenueFilters.vue
-│   │   └── StatsSummary.vue
-│   ├── composables/
-│   │   ├── useApi.ts
-│   │   └── useAuth.ts
-│   ├── views/
-│   │   ├── LoginView.vue
-│   │   ├── SubmitView.vue
-│   │   └── HistoryView.vue
-│   ├── router/
-│   │   └── index.ts
-│   ├── types/
-│   │   └── index.ts
-│   ├── App.vue
-│   └── main.ts
+├── app/
+│   ├── src/
+│   │   ├── assets/main.css
+│   │   ├── components/
+│   │   │   ├── LoadingSpinner.vue
+│   │   │   ├── PhoneInput.vue
+│   │   │   ├── RevenueForm.vue
+│   │   │   ├── RevenueList.vue
+│   │   │   ├── RevenueFilters.vue
+│   │   │   └── StatsSummary.vue
+│   │   ├── composables/
+│   │   │   ├── useApi.ts
+│   │   │   └── useAuth.ts
+│   │   ├── views/
+│   │   │   ├── LoginView.vue
+│   │   │   ├── SubmitView.vue
+│   │   │   └── HistoryView.vue
+│   │   ├── router/index.ts
+│   │   ├── types/index.ts
+│   │   ├── App.vue
+│   │   └── main.ts
+│   └── public/
+│       └── 404.html
 ├── gas/
 │   └── Code.gs
-├── index.html
-├── package.json
-├── vite.config.ts
-├── tailwind.config.js
-└── tsconfig.json
+├── .github/workflows/
+│   └── deploy.yml
+└── README.md
 ```
 
 ---
@@ -390,7 +370,7 @@ mtz/
 ## 開發順序
 
 1. **環境建置**：Vite + Vue3 + TypeScript + PrimeVue + Tailwind
-2. **Google Sheets**：建立 4 個 Sheet + 填入 seed 資料
+2. **Google Sheets**：建立 3 個 Sheet + 填入 seed 資料
 3. **Google Apps Script**：實作所有 API
 4. **前端**：登入 → 提交 → 查看 → 統計
 5. **GitHub Actions**：自動部署

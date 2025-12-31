@@ -10,7 +10,7 @@
           :maxDate="today"
           showIcon
           fluid
-          @date-select="onDateChange"
+          @date-select="onMarketOrDateChange"
         />
       </div>
 
@@ -24,7 +24,7 @@
           placeholder="選擇市場"
           :loading="props.loadingMarkets"
           fluid
-          @change="onMarketChange"
+          @change="onMarketOrDateChange"
         />
       </div>
 
@@ -42,11 +42,7 @@
 
       <!-- 租金 -->
       <div class="form-group">
-        <label class="form-label">
-          租金
-          <span v-if="loadingRent" class="rent-loading">計算中...</span>
-          <span v-else-if="isSpecialRent" class="rent-special">（特殊日期）</span>
-        </label>
+        <label class="form-label">租金</label>
         <InputNumber
           v-model="form.rent"
           :min="0"
@@ -54,6 +50,54 @@
           fluid
           prefix="$"
         />
+      </div>
+
+      <!-- 成本區塊 -->
+      <div class="costs-section">
+        <div class="costs-header" @click="showCosts = !showCosts">
+          <span class="costs-title">其他成本（選填）</span>
+          <span class="costs-toggle">{{ showCosts ? '收合' : '展開' }}</span>
+        </div>
+        
+        <Transition name="slide-up">
+          <div v-if="showCosts" class="costs-fields">
+            <!-- 停車費 -->
+            <div class="form-group">
+              <label class="form-label">停車費</label>
+              <InputNumber
+                v-model="form.parking_fee"
+                :min="0"
+                placeholder="0"
+                fluid
+                prefix="$"
+              />
+            </div>
+
+            <!-- 清潔費 -->
+            <div class="form-group">
+              <label class="form-label">清潔費</label>
+              <InputNumber
+                v-model="form.cleaning_fee"
+                :min="0"
+                placeholder="0"
+                fluid
+                prefix="$"
+              />
+            </div>
+
+            <!-- 其他成本 -->
+            <div class="form-group">
+              <label class="form-label">其他成本</label>
+              <InputNumber
+                v-model="form.other_cost"
+                :min="0"
+                placeholder="0"
+                fluid
+                prefix="$"
+              />
+            </div>
+          </div>
+        </Transition>
       </div>
 
       <!-- 備註 -->
@@ -87,7 +131,6 @@ import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import type { Market } from '../types'
-import { useApi } from '../composables/useApi'
 
 const props = defineProps<{
   markets: Market[]
@@ -101,24 +144,26 @@ const emit = defineEmits<{
     market_id: string
     amount: number
     rent: number
+    parking_fee: number
+    cleaning_fee: number
+    other_cost: number
     note: string
   }]
 }>()
 
-const api = useApi()
-
 const today = new Date()
+const showCosts = ref(false)
 
 const form = reactive({
   date: today,
   market: null as Market | null,
   amount: null as number | null,
   rent: null as number | null,
+  parking_fee: null as number | null,
+  cleaning_fee: null as number | null,
+  other_cost: null as number | null,
   note: '',
 })
-
-const loadingRent = ref(false)
-const isSpecialRent = ref(false)
 
 const isFormValid = computed(() => {
   return form.date && form.market && form.amount !== null && form.amount > 0 && form.rent !== null
@@ -131,28 +176,21 @@ const formatDate = (date: Date): string => {
   return `${y}-${m}-${d}`
 }
 
-const fetchRent = async () => {
+const isWeekend = (date: Date): boolean => {
+  const day = date.getDay()
+  return day === 0 || day === 6
+}
+
+// 根據選擇的市場和日期自動帶入租金
+const onMarketOrDateChange = () => {
   if (!form.date || !form.market) return
   
-  loadingRent.value = true
-  const dateStr = formatDate(form.date)
+  // 根據平日/假日自動帶入租金
+  const rent = isWeekend(form.date) 
+    ? form.market.rent_weekend 
+    : form.market.rent_weekday
   
-  const res = await api.getRent(form.market.id, dateStr)
-  
-  if (res.success && res.data) {
-    form.rent = res.data.rent
-    isSpecialRent.value = res.data.is_special
-  }
-  
-  loadingRent.value = false
-}
-
-const onDateChange = () => {
-  fetchRent()
-}
-
-const onMarketChange = () => {
-  fetchRent()
+  form.rent = rent
 }
 
 const handleSubmit = () => {
@@ -163,6 +201,9 @@ const handleSubmit = () => {
     market_id: form.market.id,
     amount: form.amount!,
     rent: form.rent!,
+    parking_fee: form.parking_fee || 0,
+    cleaning_fee: form.cleaning_fee || 0,
+    other_cost: form.other_cost || 0,
     note: form.note,
   })
 }
@@ -173,8 +214,11 @@ const resetForm = () => {
   form.market = null
   form.amount = null
   form.rent = null
+  form.parking_fee = null
+  form.cleaning_fee = null
+  form.other_cost = null
   form.note = ''
-  isSpecialRent.value = false
+  showCosts.value = false
 }
 
 defineExpose({ resetForm })
@@ -200,16 +244,43 @@ defineExpose({ resetForm })
   color: var(--color-text);
 }
 
-.rent-loading {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  font-weight: normal;
+.costs-section {
+  margin-bottom: var(--space-lg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
-.rent-special {
+.costs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md);
+  background: var(--color-bg);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast);
+}
+
+.costs-header:hover {
+  background: var(--color-border);
+}
+
+.costs-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.costs-toggle {
   font-size: 0.75rem;
-  color: var(--color-warning);
-  font-weight: normal;
+  color: var(--color-primary);
+}
+
+.costs-fields {
+  padding: var(--space-md);
+  padding-bottom: 0;
+  border-top: 1px solid var(--color-border);
 }
 
 .submit-btn {
