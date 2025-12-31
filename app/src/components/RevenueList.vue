@@ -49,7 +49,7 @@
               </Transition>
             </div>
             <div class="amount-row profit">
-              <span class="amount-label">淨利</span>
+              <span class="amount-label">利潤</span>
               <span class="amount-value" :class="profitClass(item.profit)">
                 {{ formatCurrency(item.profit) }}
               </span>

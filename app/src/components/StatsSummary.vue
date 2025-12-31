@@ -13,7 +13,7 @@
       <span class="stat-value muted">{{ formatCurrency(props.summary.total_costs || 0) }}</span>
     </div>
     <div class="stat-item highlight">
-      <span class="stat-label">淨利</span>
+      <span class="stat-label">利潤</span>
       <span class="stat-value" :class="profitClass">{{ formatCurrency(props.summary.total_profit) }}</span>
     </div>
   </div>
