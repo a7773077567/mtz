@@ -1,12 +1,15 @@
 <template>
   <header class="app-header">
+    <!-- 登出按鈕：右上角 -->
+    <button class="logout-btn" @click="handleLogout">登出</button>
+    
     <div class="header-container">
-      <!-- 左側：使用者資訊 -->
+      <!-- 使用者名稱 -->
       <div class="header-user">
         <span class="user-name">{{ userName }}</span>
       </div>
       
-      <!-- 中間：導航連結 -->
+      <!-- 導航連結 -->
       <nav class="header-nav">
         <router-link 
           to="/submit" 
@@ -23,11 +26,6 @@
           營業紀錄
         </router-link>
       </nav>
-      
-      <!-- 右側：登出按鈕 -->
-      <div class="header-actions">
-        <button class="logout-btn" @click="handleLogout">登出</button>
-      </div>
     </div>
   </header>
 </template>
@@ -57,20 +55,20 @@ const handleLogout = () => {
   position: sticky;
   top: 0;
   z-index: 100;
+  padding: var(--space-md) var(--space-lg);
 }
 
 .header-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--space-sm);
   max-width: var(--content-max-width, 800px);
   margin: 0 auto;
-  padding: var(--space-md) var(--space-lg);
-  gap: var(--space-md);
 }
 
 .header-user {
-  flex-shrink: 0;
+  text-align: center;
 }
 
 .user-name {
@@ -82,12 +80,11 @@ const handleLogout = () => {
 .header-nav {
   display: flex;
   gap: var(--space-sm);
-  flex: 1;
   justify-content: center;
 }
 
 .nav-item {
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-lg);
   font-size: 1rem;
   font-weight: 500;
   color: var(--color-text-muted);
@@ -97,6 +94,7 @@ const handleLogout = () => {
   min-height: 2.75rem;
   display: flex;
   align-items: center;
+  white-space: nowrap;
 }
 
 .nav-item:hover {
@@ -105,27 +103,23 @@ const handleLogout = () => {
 }
 
 .nav-item.active {
-  color: var(--color-primary);
-  background: var(--color-primary);
   background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
   color: white;
 }
 
-.header-actions {
-  flex-shrink: 0;
-}
-
 .logout-btn {
-  padding: var(--space-sm) var(--space-md);
-  font-size: 0.9375rem;
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--color-text-muted);
   background: none;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
-  min-height: 2.75rem;
   font-family: inherit;
 }
 
@@ -135,42 +129,26 @@ const handleLogout = () => {
   background: rgba(239, 68, 68, 0.05);
 }
 
-/* Mobile: 加大觸控區域 */
+/* Mobile */
 @media (max-width: 767px) {
-  .header-container {
-    flex-wrap: wrap;
+  .app-header {
     padding: var(--space-sm) var(--space-md);
-  }
-  
-  .header-user {
-    order: 1;
-    flex: 1;
-  }
-  
-  .header-actions {
-    order: 2;
-  }
-  
-  .header-nav {
-    order: 3;
-    width: 100%;
-    margin-top: var(--space-sm);
-  }
-  
-  .nav-item {
-    flex: 1;
-    justify-content: center;
-    min-height: 3rem;
-    font-size: 1.0625rem;
+    padding-top: var(--space-lg);
   }
   
   .user-name {
-    font-size: 1.0625rem;
+    font-size: 0.9375rem;
+  }
+  
+  .nav-item {
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.9375rem;
+    min-height: 2.5rem;
   }
   
   .logout-btn {
-    min-height: 2.75rem;
-    padding: var(--space-sm) var(--space-md);
+    top: var(--space-sm);
+    right: var(--space-sm);
   }
 }
 </style>
