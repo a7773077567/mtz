@@ -53,6 +53,17 @@
       </div>
     </div>
 
+    <!-- 快速篩選 -->
+    <div class="quick-filters">
+      <Button
+        label="本月"
+        severity="secondary"
+        outlined
+        size="small"
+        @click="setThisMonth"
+      />
+    </div>
+
     <div class="filter-actions">
       <Button
         label="查詢"
@@ -138,6 +149,16 @@ const handleClear = () => {
   filters.user = null
   emit('clear')
 }
+
+const setThisMonth = () => {
+  const now = new Date()
+  // 當月第一天
+  filters.dateFrom = new Date(now.getFullYear(), now.getMonth(), 1)
+  // 今天
+  filters.dateTo = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  // 自動查詢
+  handleFilter()
+}
 </script>
 
 <style scoped>
@@ -177,6 +198,11 @@ const handleClear = () => {
 
 .filter-actions :deep(.p-button) {
   flex: 1;
+}
+
+.quick-filters {
+  display: flex;
+  gap: var(--space-sm);
 }
 
 @media (max-width: 480px) {
