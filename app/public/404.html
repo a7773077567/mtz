@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/mtz/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>營業額系統</title>
+    <script>
+      // GitHub Pages SPA redirect
+      // 當 404 發生時，將路徑保存到 sessionStorage 並重定向到首頁
+      // index.html 會讀取並導航到正確的路由
+      const path = window.location.pathname;
+      const search = window.location.search;
+      const hash = window.location.hash;
+      sessionStorage.setItem('spa-redirect', path + search + hash);
+      window.location.replace('/mtz/');
+    </script>
+  </head>
+  <body>
+    <p>重新導向中...</p>
+  </body>
+</html>
