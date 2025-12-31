@@ -62,6 +62,20 @@
         size="small"
         @click="setThisMonth"
       />
+      <Button
+        label="上個月"
+        severity="secondary"
+        outlined
+        size="small"
+        @click="setLastMonth"
+      />
+      <Button
+        label="上上月"
+        severity="secondary"
+        outlined
+        size="small"
+        @click="setMonthBeforeLast"
+      />
     </div>
 
     <div class="filter-actions">
@@ -157,6 +171,24 @@ const setThisMonth = () => {
   // 今天
   filters.dateTo = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   // 自動查詢
+  handleFilter()
+}
+
+const setLastMonth = () => {
+  const now = new Date()
+  // 上個月第一天
+  filters.dateFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  // 上個月最後一天
+  filters.dateTo = new Date(now.getFullYear(), now.getMonth(), 0)
+  handleFilter()
+}
+
+const setMonthBeforeLast = () => {
+  const now = new Date()
+  // 上上月第一天
+  filters.dateFrom = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+  // 上上月最後一天
+  filters.dateTo = new Date(now.getFullYear(), now.getMonth() - 1, 0)
   handleFilter()
 }
 </script>
