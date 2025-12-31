@@ -1,14 +1,6 @@
 <template>
   <div class="submit-view">
-    <header class="page-header">
-      <div class="header-content">
-        <h1 class="page-title">提交營業額</h1>
-        <p class="user-name">{{ auth.user.value?.name }}</p>
-      </div>
-      <nav class="nav-links">
-        <router-link to="/history" class="nav-link">查看紀錄</router-link>
-      </nav>
-    </header>
+    <AppHeader />
 
     <main class="page-content">
       <Transition name="fade" mode="out-in">
@@ -35,6 +27,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
+import AppHeader from '../components/AppHeader.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import RevenueForm from '../components/RevenueForm.vue'
 import { useApi } from '../composables/useApi'
@@ -108,53 +101,6 @@ const handleSubmit = async (data: {
 .submit-view {
   min-height: 100vh;
   background: var(--color-bg);
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-md) var(--space-lg);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.header-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.user-name {
-  margin: 0;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-}
-
-.nav-links {
-  display: flex;
-  gap: var(--space-md);
-}
-
-.nav-link {
-  font-size: 0.875rem;
-  color: var(--color-primary);
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-.nav-link:hover {
-  color: var(--color-primary-dark);
 }
 
 .page-content {
