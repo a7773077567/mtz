@@ -16,9 +16,37 @@
               <span class="amount-label">租金</span>
               <span class="amount-value muted">-{{ formatCurrency(item.rent) }}</span>
             </div>
-            <div v-if="getTotalCosts(item) > 0" class="amount-row">
-              <span class="amount-label">其他成本</span>
-              <span class="amount-value muted">-{{ formatCurrency(getTotalCosts(item)) }}</span>
+            <!-- 可展開的其他成本 -->
+            <div v-if="getTotalCosts(item) > 0" class="costs-section">
+              <div
+                class="amount-row costs-row"
+                role="button"
+                tabindex="0"
+                @click="toggleCosts(item.id)"
+                @keydown.enter="toggleCosts(item.id)"
+              >
+                <span class="amount-label costs-label">
+                  其他成本
+                  <span class="expand-arrow" :class="{ expanded: expandedItems.has(item.id) }"></span>
+                </span>
+                <span class="amount-value muted">-{{ formatCurrency(getTotalCosts(item)) }}</span>
+              </div>
+              <Transition name="slide">
+                <div v-if="expandedItems.has(item.id)" class="costs-details">
+                  <div v-if="item.parking_fee > 0" class="amount-row sub-row">
+                    <span class="amount-label sub-label">停車費</span>
+                    <span class="amount-value muted">-{{ formatCurrency(item.parking_fee) }}</span>
+                  </div>
+                  <div v-if="item.cleaning_fee > 0" class="amount-row sub-row">
+                    <span class="amount-label sub-label">清潔費</span>
+                    <span class="amount-value muted">-{{ formatCurrency(item.cleaning_fee) }}</span>
+                  </div>
+                  <div v-if="item.other_cost > 0" class="amount-row sub-row">
+                    <span class="amount-label sub-label">其他</span>
+                    <span class="amount-value muted">-{{ formatCurrency(item.other_cost) }}</span>
+                  </div>
+                </div>
+              </Transition>
             </div>
             <div class="amount-row profit">
               <span class="amount-label">淨利</span>
@@ -42,12 +70,25 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { Revenue } from '../types'
 
 const props = defineProps<{
   items: Revenue[]
   showSubmitter?: boolean
 }>()
+
+const expandedItems = ref<Set<string>>(new Set())
+
+const toggleCosts = (id: string) => {
+  if (expandedItems.value.has(id)) {
+    expandedItems.value.delete(id)
+  } else {
+    expandedItems.value.add(id)
+  }
+  // 觸發響應式更新
+  expandedItems.value = new Set(expandedItems.value)
+}
 
 const formatDate = (dateStr: string): string => {
   const date = new Date(dateStr)
@@ -193,5 +234,73 @@ const getTotalCosts = (item: Revenue): number => {
 .list-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+/* Costs Expand */
+
+.costs-row {
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+  margin: -4px 0;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.costs-row:active {
+  background: var(--color-bg);
+}
+
+.costs-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.expand-arrow {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--color-primary);
+  transition: transform var(--transition-fast);
+}
+
+.expand-arrow.expanded {
+  transform: rotate(180deg);
+}
+
+.costs-details {
+  margin-top: var(--space-xs);
+  padding-left: var(--space-md);
+  border-left: 2px solid var(--color-border);
+}
+
+.sub-row {
+  padding: 2px 0;
+}
+
+.sub-row .amount-value {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.sub-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  opacity: 0.8;
+}
+
+/* Slide Transition */
+.slide-enter-active,
+.slide-leave-active {
+  transition: all 0.2s ease;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
 }
 </style>
