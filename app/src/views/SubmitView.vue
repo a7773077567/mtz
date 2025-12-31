@@ -32,11 +32,13 @@ import LoadingSpinner from '../components/LoadingSpinner.vue'
 import RevenueForm from '../components/RevenueForm.vue'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
+import { useCache } from '../composables/useCache'
 import type { Market } from '../types'
 
 const router = useRouter()
 const api = useApi()
 const auth = useAuth()
+const cache = useCache()
 const toast = useToast()
 
 const markets = ref<Market[]>([])
@@ -50,9 +52,19 @@ if (!auth.isLoggedIn()) {
 }
 
 onMounted(async () => {
+  // 優先使用快取
+  const cached = cache.getCachedMarkets()
+  if (cached && cached.length > 0) {
+    markets.value = cached
+    loadingMarkets.value = false
+    return
+  }
+  
+  // 快取不存在才呼叫 API
   const res = await api.getMarkets()
   if (res.success && res.data) {
     markets.value = res.data
+    cache.setCachedMarkets(res.data)
   }
   loadingMarkets.value = false
 })

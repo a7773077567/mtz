@@ -61,6 +61,12 @@ export interface LoginResponse {
   role: 'user' | 'admin'
 }
 
+// Init Response (login + markets)
+export interface InitResponse {
+  user: LoginResponse
+  markets: Market[]
+}
+
 // Revenues Response
 export interface RevenuesResponse {
   records: Revenue[]

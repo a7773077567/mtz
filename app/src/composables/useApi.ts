@@ -1,6 +1,7 @@
 import type {
   ApiResponse,
   LoginResponse,
+  InitResponse,
   Market,
   RevenuesResponse,
   RevenueFilters,
@@ -38,6 +39,11 @@ export function useApi() {
     return request<Market[]>('getMarkets')
   }
 
+  // 初始化（登入 + 市場列表），減少 round trips
+  const init = async (phone: string): Promise<ApiResponse<InitResponse>> => {
+    return request<InitResponse>('init', { phone })
+  }
+
   // 提交營業額
   const submitRevenue = async (data: {
     phone: string
@@ -53,12 +59,14 @@ export function useApi() {
     return request<{ id: string }>('submitRevenue', data)
   }
 
-  // 查詢營業額
+  // 查詢營業額（支援分頁）
   const getRevenues = async (
     phone: string,
-    filters?: RevenueFilters
+    filters?: RevenueFilters,
+    limit?: number,
+    offset?: number
   ): Promise<ApiResponse<RevenuesResponse>> => {
-    return request<RevenuesResponse>('getRevenues', { phone, filters })
+    return request<RevenuesResponse>('getRevenues', { phone, filters, limit, offset })
   }
 
   // 取得使用者列表（管理員用）
@@ -68,6 +76,7 @@ export function useApi() {
 
   return {
     login,
+    init,
     getMarkets,
     submitRevenue,
     getRevenues,

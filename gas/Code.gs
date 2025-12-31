@@ -27,6 +27,21 @@ function doPost(e) {
       case 'login':
         result = handleLogin(request.phone);
         break;
+      case 'init':
+        // 合併登入 + 市場列表，減少 round trips
+        const loginResult = handleLogin(request.phone);
+        if (!loginResult.success) {
+          result = loginResult;
+        } else {
+          result = {
+            success: true,
+            data: {
+              user: loginResult.data,
+              markets: handleGetMarkets().data
+            }
+          };
+        }
+        break;
       case 'getMarkets':
         result = handleGetMarkets();
         break;
@@ -34,7 +49,7 @@ function doPost(e) {
         result = handleSubmitRevenue(request);
         break;
       case 'getRevenues':
-        result = handleGetRevenues(request.phone, request.filters);
+        result = handleGetRevenues(request.phone, request.filters, request.limit, request.offset);
         break;
       case 'getUsers':
         result = handleGetUsers(request.phone);
@@ -82,6 +97,30 @@ function getSheetData(name) {
   });
 }
 
+/**
+ * 帶快取的 Sheet 讀取，減少重複讀取開銷
+ * @param {string} name Sheet 名稱
+ * @param {number} ttlSeconds 快取秒數，預設 300 秒
+ */
+function getSheetDataCached(name, ttlSeconds = 300) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = `sheet_${name}`;
+  const cached = cache.get(cacheKey);
+  
+  if (cached) {
+    return JSON.parse(cached);
+  }
+  
+  const data = getSheetData(name);
+  // CacheService 限制單一值最大 100KB
+  try {
+    cache.put(cacheKey, JSON.stringify(data), ttlSeconds);
+  } catch (e) {
+    // 資料過大無法快取，忽略錯誤
+  }
+  return data;
+}
+
 function generateId() {
   return Utilities.getUuid();
 }
@@ -103,7 +142,7 @@ function handleLogin(phone) {
     return { success: false, error: '請輸入手機號碼' };
   }
   
-  const users = getSheetData(SHEET_USERS);
+  const users = getSheetDataCached(SHEET_USERS, 300);
   const user = users.find(u => u['手機'] === phone);
   
   if (!user) {
@@ -128,7 +167,7 @@ function handleLogin(phone) {
  * 取得市場列表（含租金規則）
  */
 function handleGetMarkets() {
-  const markets = getSheetData(SHEET_MARKETS);
+  const markets = getSheetDataCached(SHEET_MARKETS, 300);
   
   const activeMarkets = markets
     .filter(m => m['狀態'] === '啟用')
@@ -197,9 +236,13 @@ function handleSubmitRevenue(request) {
 }
 
 /**
- * 查詢營業額
+ * 查詢營業額（支援分頁）
+ * @param {string} phone 手機號碼
+ * @param {Object} filters 篩選條件
+ * @param {number} limit 每頁筆數，預設全部
+ * @param {number} offset 跳過筆數，預設 0
  */
-function handleGetRevenues(phone, filters) {
+function handleGetRevenues(phone, filters, limit, offset) {
   if (!phone) {
     return { success: false, error: '缺少手機號碼' };
   }
@@ -278,10 +321,15 @@ function handleGetRevenues(phone, filters) {
     submitted_at: r['提交時間'] ? Utilities.formatDate(r['提交時間'], 'Asia/Taipei', "yyyy-MM-dd'T'HH:mm:ss") : ''
   }));
   
+  // 分頁處理
+  const startIndex = offset || 0;
+  const endIndex = limit ? startIndex + limit : records.length;
+  const paginatedRecords = records.slice(startIndex, endIndex);
+  
   return {
     success: true,
     data: {
-      records: records,
+      records: paginatedRecords,
       summary: summary
     }
   };

@@ -23,10 +23,12 @@ import { useRouter } from 'vue-router'
 import PhoneInput from '../components/PhoneInput.vue'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
+import { useCache } from '../composables/useCache'
 
 const router = useRouter()
 const api = useApi()
 const auth = useAuth()
+const cache = useCache()
 
 const loading = ref(false)
 const phoneInputRef = ref<InstanceType<typeof PhoneInput> | null>(null)
@@ -34,17 +36,25 @@ const phoneInputRef = ref<InstanceType<typeof PhoneInput> | null>(null)
 const handleLogin = async (phone: string) => {
   loading.value = true
   
-  const res = await api.login(phone)
+  // 使用 init API 一次取得 user + markets
+  const res = await api.init(phone)
   
   loading.value = false
   
   if (res.success && res.data) {
+    const { user, markets } = res.data
+    
+    // 設定使用者
     auth.setUser({
       id: '',
-      phone: res.data.phone,
-      name: res.data.name,
-      role: res.data.role,
+      phone: user.phone,
+      name: user.name,
+      role: user.role,
     })
+    
+    // 快取 markets
+    cache.setCachedMarkets(markets)
+    
     router.push('/submit')
   } else {
     phoneInputRef.value?.setError(res.error || '登入失敗')
