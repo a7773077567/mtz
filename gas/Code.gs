@@ -125,7 +125,7 @@ function handleLogin(phone) {
 }
 
 /**
- * 取得市場列表（含租金資訊）
+ * 取得市場列表（含租金規則）
  */
 function handleGetMarkets() {
   const markets = getSheetData(SHEET_MARKETS);
@@ -135,8 +135,7 @@ function handleGetMarkets() {
     .map(m => ({
       id: m['id'],
       name: m['名稱'],
-      rent_weekday: m['平日租金'] || 0,
-      rent_weekend: m['假日租金'] || 0
+      rent_rules: m['租金規則'] || ''
     }));
   
   return { success: true, data: activeMarkets };
@@ -191,7 +190,7 @@ function handleSubmitRevenue(request) {
     submittedAt,             // 提交時間
     id,                      // id
     market_id,               // market_id
-    phone                    // submitted_by_phone
+    "'" + phone              // submitted_by_phone（加單引號強制文字格式）
   ]);
   
   return { success: true, data: { id: id } };

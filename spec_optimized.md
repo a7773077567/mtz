@@ -168,9 +168,7 @@ VITE_GOOGLE_SCRIPT_URL=<Google Apps Script Web App URL>
 | 欄位 | 類型 | 必填 | 說明 |
 |-----|------|-----|------|
 | 名稱 | string | ✓ | 市場名稱（顯示用） |
-| 地址 | string | | 市場地址 |
-| 平日租金 | number | ✓ | 週一～五租金 |
-| 假日租金 | number | ✓ | 週六日租金 |
+| 租金規則 | string | | 格式: `1-5:400,6-7:600`（1=週一...7=週日） |
 | 狀態 | string | ✓ | `啟用` / `停用` |
 | id | string | ✓ | UUID（程式用） |
 

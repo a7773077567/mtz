@@ -10,8 +10,7 @@ export interface User {
 export interface Market {
   id: string
   name: string
-  rent_weekday: number
-  rent_weekend: number
+  rent_rules: string // 格式: "1-4:2600,5:2800,6-7:3400" (1=週一, 7=週日)
 }
 
 // Revenue Record

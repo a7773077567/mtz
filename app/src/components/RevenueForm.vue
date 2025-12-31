@@ -176,20 +176,54 @@ const formatDate = (date: Date): string => {
   return `${y}-${m}-${d}`
 }
 
-const isWeekend = (date: Date): boolean => {
-  const day = date.getDay()
-  return day === 0 || day === 6
+/**
+ * 解析租金規則字串，取得指定星期幾的租金
+ * 規則格式: "1-4:2600,5:2800,6-7:3400"
+ * 1=週一, 2=週二, ..., 7=週日
+ */
+const parseRentRules = (rules: string, date: Date): number => {
+  if (!rules || !rules.trim()) return 0
+  
+  // JavaScript getDay(): 0=週日, 1-6=週一到週六
+  // 轉換成我們的格式: 1=週一, ..., 7=週日
+  const jsDay = date.getDay()
+  const dayOfWeek = jsDay === 0 ? 7 : jsDay
+  
+  const parts = rules.split(',')
+  
+  for (const part of parts) {
+    const [daysStr, rentStr] = part.split(':')
+    if (!daysStr || !rentStr) continue
+    
+    const rent = parseInt(rentStr.trim(), 10)
+    if (isNaN(rent)) continue
+    
+    // 檢查是否為範圍（如 1-4）或單一日（如 5）
+    if (daysStr.includes('-')) {
+      const rangeParts = daysStr.split('-')
+      const start = parseInt(rangeParts[0]?.trim() || '', 10)
+      const end = parseInt(rangeParts[1]?.trim() || '', 10)
+      
+      if (!isNaN(start) && !isNaN(end) && dayOfWeek >= start && dayOfWeek <= end) {
+        return rent
+      }
+    } else {
+      const day = parseInt(daysStr.trim(), 10)
+      if (dayOfWeek === day) {
+        return rent
+      }
+    }
+  }
+  
+  return 0 // 找不到對應規則則回傳 0
 }
 
 // 根據選擇的市場和日期自動帶入租金
 const onMarketOrDateChange = () => {
   if (!form.date || !form.market) return
   
-  // 根據平日/假日自動帶入租金
-  const rent = isWeekend(form.date) 
-    ? form.market.rent_weekend 
-    : form.market.rent_weekday
-  
+  // 解析租金規則
+  const rent = parseRentRules(form.market.rent_rules, form.date)
   form.rent = rent
 }
 
