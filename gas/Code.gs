@@ -238,11 +238,18 @@ function handleGetRevenues(phone, filters) {
     }
   }
   
-  // 排序：最新在前
+  // 排序：日期由新到舊，同日期則按提交時間由新到舊
   revenues.sort((a, b) => {
-    const dateA = new Date(a['日期'] + ' ' + (a['提交時間'] || '00:00:00'));
-    const dateB = new Date(b['日期'] + ' ' + (b['提交時間'] || '00:00:00'));
-    return dateB - dateA;
+    // 先比較日期
+    const dateA = formatDate(a['日期']);
+    const dateB = formatDate(b['日期']);
+    if (dateA !== dateB) {
+      return dateB > dateA ? 1 : -1;
+    }
+    // 同日期再比較提交時間
+    const timeA = a['提交時間'] ? new Date(a['提交時間']).getTime() : 0;
+    const timeB = b['提交時間'] ? new Date(b['提交時間']).getTime() : 0;
+    return timeB - timeA;
   });
   
   // 計算統計
