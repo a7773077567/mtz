@@ -1,7 +1,13 @@
 <template>
   <header class="app-header">
     <!-- 登出按鈕：右上角 -->
-    <button class="logout-btn" @click="handleLogout">登出</button>
+    <button class="logout-btn" @click="handleLogout" aria-label="登出">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16 17 21 12 16 7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
+      </svg>
+    </button>
     
     <div class="header-container">
       <!-- 使用者名稱 -->
@@ -111,22 +117,32 @@ const handleLogout = () => {
   position: absolute;
   top: var(--space-md);
   right: var(--space-md);
-  padding: var(--space-xs) var(--space-sm);
-  font-size: 0.8125rem;
-  font-weight: 500;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
   color: var(--color-text-muted);
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  border: none;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
-  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logout-btn svg {
+  width: 22px;
+  height: 22px;
 }
 
 .logout-btn:hover {
   color: var(--color-error);
-  border-color: var(--color-error);
-  background: rgba(239, 68, 68, 0.05);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.logout-btn:active {
+  transform: scale(0.95);
 }
 
 /* Mobile */
@@ -149,6 +165,14 @@ const handleLogout = () => {
   .logout-btn {
     top: var(--space-sm);
     right: var(--space-sm);
+    width: 48px;
+    height: 48px;
+    padding: 12px;
+  }
+  
+  .logout-btn svg {
+    width: 24px;
+    height: 24px;
   }
 }
 </style>
