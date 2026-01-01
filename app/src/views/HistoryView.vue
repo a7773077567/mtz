@@ -33,6 +33,7 @@
               :items="revenues"
               :show-submitter="isAdmin"
               :deleting-id="deletingId"
+              :can-delete="isAdmin"
               @delete="handleDeleteRequest"
             />
             <!-- Load More 按鈕 -->

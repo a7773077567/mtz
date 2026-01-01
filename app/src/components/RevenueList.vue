@@ -60,8 +60,8 @@
           <span v-if="showSubmitter" class="item-submitter">{{ item.submitted_by }}</span>
           <span v-if="item.note" class="item-note">{{ item.note }}</span>
         </div>
-        <!-- 刪除按鈕 -->
-        <div class="item-actions">
+        <!-- 刪除按鈕（僅管理員） -->
+        <div v-if="canDelete" class="item-actions">
           <button
             class="delete-btn"
             type="button"
@@ -95,6 +95,7 @@ const props = defineProps<{
   items: Revenue[]
   showSubmitter?: boolean
   deletingId?: string | null  // 正在刪除的項目 ID
+  canDelete?: boolean  // 是否可以刪除（僅管理員）
 }>()
 
 const emit = defineEmits<{

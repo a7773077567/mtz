@@ -576,9 +576,7 @@ function handleGetUsers(phone) {
 /**
  * 刪除單筆營業紀錄
  * 
- * 權限控制：
- * - 管理員可刪除任何紀錄
- * - 一般使用者只能刪除自己提交的紀錄
+ * 權限控制：僅管理員可刪除
  * 
  * @param {string} phone - 請求者手機號碼
  * @param {string} id - 要刪除的紀錄 ID
@@ -599,7 +597,10 @@ function handleDeleteRevenue(phone, id) {
     return { success: false, error: '使用者驗證失敗' };
   }
   
-  const isAdmin = user['權限'] === 'admin';
+  // 權限檢查：僅管理員可刪除
+  if (user['權限'] !== 'admin') {
+    return { success: false, error: '權限不足，僅管理員可刪除紀錄' };
+  }
   
   // 取得 Sheet 資料
   const sheet = getSheet(SHEET_REVENUES);
@@ -608,7 +609,6 @@ function handleDeleteRevenue(phone, id) {
   
   // 找到 id 欄位的索引
   const idColIndex = headers.indexOf('id');
-  const phoneColIndex = headers.indexOf('submitted_by_phone');
   
   if (idColIndex === -1) {
     return { success: false, error: '找不到 id 欄位' };
@@ -618,14 +618,6 @@ function handleDeleteRevenue(phone, id) {
   let rowToDelete = -1;
   for (let i = 1; i < data.length; i++) {
     if (data[i][idColIndex] === id) {
-      // 找到該筆紀錄
-      const recordPhone = data[i][phoneColIndex];
-      
-      // 權限檢查：非管理員只能刪除自己的紀錄
-      if (!isAdmin && recordPhone !== phone) {
-        return { success: false, error: '權限不足，只能刪除自己的紀錄' };
-      }
-      
       rowToDelete = i + 1; // Sheet 的列號是 1-indexed
       break;
     }
