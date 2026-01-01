@@ -64,7 +64,7 @@ const handleLogin = async (phone: string) => {
     // 快取 markets
     cache.setCachedMarkets(markets)
     
-    router.push('/submit')
+    router.push('/attendance')
   } else {
     phoneInputRef.value?.setError(res.error || '登入失敗')
   }
