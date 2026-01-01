@@ -864,7 +864,7 @@ function handleClockOut(request) {
     sheet.getRange(rowToUpdate, isManualCol + 1).setValue('是');
   }
   
-  sheet.getRange(rowToUpdate, updatedByCol + 1).setValue(phone);
+  sheet.getRange(rowToUpdate, updatedByCol + 1).setValue("'" + phone);
   
   return { 
     success: true, 
@@ -1187,7 +1187,7 @@ function handleUpdateAttendance(request) {
     sheet.getRange(rowToUpdate, noteCol + 1).setValue(note);
   }
   
-  sheet.getRange(rowToUpdate, updatedByCol + 1).setValue(phone);
+  sheet.getRange(rowToUpdate, updatedByCol + 1).setValue("'" + phone);
   
   return { success: true };
 }
