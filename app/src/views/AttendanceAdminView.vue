@@ -3,6 +3,15 @@
     <AppHeader />
 
     <main class="page-content">
+      <!-- 返回按鈕 -->
+      <Button
+        label="← 返回打卡"
+        severity="secondary"
+        text
+        class="back-btn"
+        @click="router.push('/attendance')"
+      />
+
       <h1 class="page-title">出勤管理</h1>
 
       <!-- 篩選區 -->
@@ -69,6 +78,12 @@
             :loading="loading"
             @click="loadData"
           />
+          <Button
+            label="清除"
+            severity="secondary"
+            outlined
+            @click="clearFilters"
+          />
         </div>
       </div>
 
@@ -88,7 +103,7 @@
       <Transition name="fade" mode="out-in">
         <LoadingSpinner v-if="loading" text="載入中..." />
         <div v-else-if="records.length === 0" class="empty-state card">
-          <span class="empty-icon">📋</span>
+          <i class="pi pi-calendar-times empty-icon"></i>
           <p>沒有出勤紀錄</p>
         </div>
         <div v-else class="records-list">
@@ -285,6 +300,15 @@ function applyQuickFilter(filter: { label: string; getRange: () => { from: Date;
   loadData()
 }
 
+function clearFilters() {
+  selectedUser.value = null
+  selectedMarket.value = null
+  dateFromObj.value = null
+  dateToObj.value = null
+  activeQuickFilter.value = ''
+  loadData()
+}
+
 async function loadData() {
   if (!auth.user.value) return
   
@@ -396,6 +420,11 @@ onMounted(async () => {
   gap: var(--space-md);
 }
 
+.back-btn {
+  align-self: flex-start;
+  margin-bottom: var(--space-xs);
+}
+
 .page-title {
   font-size: 1.25rem;
   font-weight: 600;
@@ -476,6 +505,7 @@ onMounted(async () => {
 
 .empty-icon {
   font-size: 3rem;
+  color: var(--color-text-muted);
   display: block;
   margin-bottom: var(--space-md);
 }
