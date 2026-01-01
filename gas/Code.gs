@@ -206,11 +206,13 @@ function handleSubmitRevenue(request) {
   }
   
   const id = generateId();
-  const pFee = parking_fee || 0;
-  const cFee = cleaning_fee || 0;
-  const oCost = other_cost || 0;
-  const totalCost = rent + pFee + cFee + oCost;
-  const profit = amount - totalCost;
+  const numAmount = Number(amount) || 0;
+  const numRent = Number(rent) || 0;
+  const pFee = Number(parking_fee) || 0;
+  const cFee = Number(cleaning_fee) || 0;
+  const oCost = Number(other_cost) || 0;
+  const totalCost = numRent + pFee + cFee + oCost;
+  const profit = numAmount - totalCost;
   const submittedAt = new Date();
   
   // 寫入資料
@@ -218,12 +220,12 @@ function handleSubmitRevenue(request) {
   sheet.appendRow([
     date,                    // 日期
     market['名稱'],          // 市場
-    amount,                  // 營業額
-    rent,                    // 租金
+    numAmount,               // 營業額
+    numRent,                 // 租金
     pFee,                    // 停車費
     cFee,                    // 清潔費
     oCost,                   // 其他成本
-    profit,                  // 淨利
+    profit,                  // 利潤
     user['名稱'],            // 提交者
     note || '',              // 備註
     submittedAt,             // 提交時間
@@ -300,7 +302,7 @@ function handleGetRevenues(phone, filters, limit, offset) {
     total_amount: revenues.reduce((sum, r) => sum + (r['營業額'] || 0), 0),
     total_rent: revenues.reduce((sum, r) => sum + (r['租金'] || 0), 0),
     total_costs: revenues.reduce((sum, r) => sum + (r['停車費'] || 0) + (r['清潔費'] || 0) + (r['其他成本'] || 0), 0),
-    total_profit: revenues.reduce((sum, r) => sum + (r['淨利'] || 0), 0)
+    total_profit: revenues.reduce((sum, r) => sum + (r['利潤'] || 0), 0)
   };
   
   // 格式化輸出
@@ -309,12 +311,12 @@ function handleGetRevenues(phone, filters, limit, offset) {
     date: formatDate(r['日期']),
     market: r['市場'],
     market_id: r['market_id'],
-    amount: r['營業額'],
-    rent: r['租金'],
+    amount: r['營業額'] || 0,
+    rent: r['租金'] || 0,
     parking_fee: r['停車費'] || 0,
     cleaning_fee: r['清潔費'] || 0,
     other_cost: r['其他成本'] || 0,
-    profit: r['淨利'],
+    profit: r['利潤'] || 0,
     submitted_by: r['提交者'],
     submitted_by_phone: r['submitted_by_phone'],
     note: r['備註'] || '',
