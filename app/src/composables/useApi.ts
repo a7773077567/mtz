@@ -74,6 +74,11 @@ export function useApi() {
     return request<User[]>('getUsers', { phone })
   }
 
+  // 刪除單筆營業紀錄
+  const deleteRevenue = async (phone: string, id: string): Promise<ApiResponse<void>> => {
+    return request<void>('deleteRevenue', { phone, id })
+  }
+
   return {
     login,
     init,
@@ -81,6 +86,7 @@ export function useApi() {
     submitRevenue,
     getRevenues,
     getUsers,
+    deleteRevenue,
   }
 }
 

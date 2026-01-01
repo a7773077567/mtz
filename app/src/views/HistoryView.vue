@@ -32,6 +32,8 @@
             <RevenueList
               :items="revenues"
               :show-submitter="isAdmin"
+              :deleting-id="deletingId"
+              @delete="handleDeleteRequest"
             />
             <!-- Load More 按鈕 -->
             <div v-if="hasMore" class="load-more-container">
@@ -49,6 +51,10 @@
         </Transition>
       </section>
     </main>
+
+    <!-- 確認對話框和 Toast -->
+    <ConfirmDialog />
+    <Toast position="top-center" />
   </div>
 </template>
 
@@ -56,6 +62,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
+import ConfirmDialog from 'primevue/confirmdialog'
+import Toast from 'primevue/toast'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
 import AppHeader from '../components/AppHeader.vue'
 import RevenueSkeleton from '../components/RevenueSkeleton.vue'
 import RevenueFilters from '../components/RevenueFilters.vue'
@@ -72,6 +82,8 @@ const router = useRouter()
 const api = useApi()
 const auth = useAuth()
 const cache = useCache()
+const confirm = useConfirm()
+const toast = useToast()
 
 const loading = ref(true)
 const loadingMore = ref(false)
@@ -81,6 +93,7 @@ const markets = ref<Market[]>([])
 const users = ref<User[]>([])
 const hasMore = ref(false)
 const currentFilters = ref<Filters | undefined>(undefined)
+const deletingId = ref<string | null>(null)
 
 const isAdmin = computed(() => auth.isAdmin())
 
@@ -158,6 +171,60 @@ const handleFilter = (filters: Filters) => {
 const handleClear = () => {
   currentFilters.value = undefined
   fetchData()
+}
+
+// 處理刪除請求（顯示確認對話框）
+const handleDeleteRequest = (item: Revenue) => {
+  const dateStr = new Date(item.date).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })
+  
+  confirm.require({
+    message: `確定要刪除 ${dateStr} 的 $${item.amount.toLocaleString()} 營業紀錄？`,
+    header: '刪除確認',
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: '取消',
+    acceptLabel: '刪除',
+    acceptClass: 'p-button-danger',
+    accept: () => executeDelete(item),
+  })
+}
+
+// 執行刪除
+const executeDelete = async (item: Revenue) => {
+  if (!auth.user.value) return
+  
+  deletingId.value = item.id
+  
+  const res = await api.deleteRevenue(auth.user.value.phone, item.id)
+  
+  deletingId.value = null
+  
+  if (res.success) {
+    // 從列表中移除
+    revenues.value = revenues.value.filter(r => r.id !== item.id)
+    
+    // 更新統計
+    if (summary.value) {
+      summary.value = {
+        total_amount: summary.value.total_amount - item.amount,
+        total_rent: summary.value.total_rent - item.rent,
+        total_costs: summary.value.total_costs - (item.parking_fee + item.cleaning_fee + item.other_cost),
+        total_profit: summary.value.total_profit - item.profit,
+      }
+    }
+    
+    toast.add({
+      severity: 'success',
+      summary: '刪除成功',
+      life: 2000,
+    })
+  } else {
+    toast.add({
+      severity: 'error',
+      summary: '刪除失敗',
+      detail: res.error || '請稍後再試',
+      life: 3000,
+    })
+  }
 }
 </script>
 

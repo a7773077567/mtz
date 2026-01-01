@@ -119,6 +119,11 @@ function doPost(e) {
         result = handleGetUsers(request.phone);
         break;
         
+      case 'deleteRevenue':
+        // 刪除單筆營業紀錄
+        result = handleDeleteRevenue(request.phone, request.id);
+        break;
+        
       default:
         result = { success: false, error: '未知的操作' };
     }
@@ -566,4 +571,72 @@ function handleGetUsers(phone) {
     }));
   
   return { success: true, data: activeUsers };
+}
+
+/**
+ * 刪除單筆營業紀錄
+ * 
+ * 權限控制：
+ * - 管理員可刪除任何紀錄
+ * - 一般使用者只能刪除自己提交的紀錄
+ * 
+ * @param {string} phone - 請求者手機號碼
+ * @param {string} id - 要刪除的紀錄 ID
+ * @returns {Object} 回應物件
+ *   - 成功: { success: true }
+ *   - 失敗: { success: false, error: '錯誤訊息' }
+ */
+function handleDeleteRevenue(phone, id) {
+  if (!phone || !id) {
+    return { success: false, error: '缺少必要參數' };
+  }
+  
+  // 驗證使用者
+  const users = getSheetData(SHEET_USERS);
+  const user = users.find(u => u['手機'] === phone);
+  
+  if (!user || user['狀態'] !== '啟用') {
+    return { success: false, error: '使用者驗證失敗' };
+  }
+  
+  const isAdmin = user['權限'] === 'admin';
+  
+  // 取得 Sheet 資料
+  const sheet = getSheet(SHEET_REVENUES);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  // 找到 id 欄位的索引
+  const idColIndex = headers.indexOf('id');
+  const phoneColIndex = headers.indexOf('submitted_by_phone');
+  
+  if (idColIndex === -1) {
+    return { success: false, error: '找不到 id 欄位' };
+  }
+  
+  // 從第二列開始搜尋（第一列是標題）
+  let rowToDelete = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][idColIndex] === id) {
+      // 找到該筆紀錄
+      const recordPhone = data[i][phoneColIndex];
+      
+      // 權限檢查：非管理員只能刪除自己的紀錄
+      if (!isAdmin && recordPhone !== phone) {
+        return { success: false, error: '權限不足，只能刪除自己的紀錄' };
+      }
+      
+      rowToDelete = i + 1; // Sheet 的列號是 1-indexed
+      break;
+    }
+  }
+  
+  if (rowToDelete === -1) {
+    return { success: false, error: '找不到該筆紀錄' };
+  }
+  
+  // 刪除該列
+  sheet.deleteRow(rowToDelete);
+  
+  return { success: true };
 }

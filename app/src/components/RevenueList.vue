@@ -60,6 +60,24 @@
           <span v-if="showSubmitter" class="item-submitter">{{ item.submitted_by }}</span>
           <span v-if="item.note" class="item-note">{{ item.note }}</span>
         </div>
+        <!-- 刪除按鈕 -->
+        <div class="item-actions">
+          <button
+            class="delete-btn"
+            type="button"
+            :disabled="deletingId === item.id"
+            @click.stop="handleDelete(item)"
+          >
+            <span v-if="deletingId === item.id" class="delete-spinner"></span>
+            <template v-else>
+              <svg class="delete-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              <span>刪除</span>
+            </template>
+          </button>
+        </div>
       </div>
     </TransitionGroup>
 
@@ -76,6 +94,11 @@ import type { Revenue } from '../types'
 const props = defineProps<{
   items: Revenue[]
   showSubmitter?: boolean
+  deletingId?: string | null  // 正在刪除的項目 ID
+}>()
+
+const emit = defineEmits<{
+  delete: [item: Revenue]  // 通知父元件刪除
 }>()
 
 const expandedItems = ref<Set<string>>(new Set())
@@ -109,6 +132,10 @@ const profitClass = (profit: number): string => {
 
 const getTotalCosts = (item: Revenue): number => {
   return (item.parking_fee || 0) + (item.cleaning_fee || 0) + (item.other_cost || 0)
+}
+
+const handleDelete = (item: Revenue) => {
+  emit('delete', item)
 }
 </script>
 
@@ -147,6 +174,64 @@ const getTotalCosts = (item: Revenue): number => {
 .item-market {
   font-weight: 500;
   color: var(--color-text);
+}
+
+/* 刪除按鈕區域 */
+.item-actions {
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px dashed var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-error, #ef4444);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.delete-btn:active {
+  transform: scale(0.97);
+}
+
+.delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.delete-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.delete-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  border-top-color: var(--color-error, #ef4444);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .item-body {
