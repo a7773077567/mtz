@@ -243,8 +243,13 @@ onMounted(() => {
 }
 
 .back-btn {
-  align-self: flex-start;
-  margin-bottom: var(--space-xs);
+  width: 100%;
+  justify-content: center;
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-sm);
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-radius: var(--radius-md);
+  color: var(--color-primary) !important;
 }
 
 /* 篩選區 */
