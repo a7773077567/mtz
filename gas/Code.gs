@@ -52,6 +52,7 @@ const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID';
 const SHEET_USERS = 'users';
 const SHEET_MARKETS = 'markets';
 const SHEET_REVENUES = 'revenues';
+const SHEET_ATTENDANCE = 'attendance';
 
 // ============================================================================
 // 主要進入點
@@ -122,6 +123,42 @@ function doPost(e) {
       case 'deleteRevenue':
         // 刪除單筆營業紀錄
         result = handleDeleteRevenue(request.phone, request.id);
+        break;
+        
+      // ============ 打卡系統 ============
+      case 'clockIn':
+        // 上班打卡
+        result = handleClockIn(request);
+        break;
+        
+      case 'clockOut':
+        // 下班打卡
+        result = handleClockOut(request);
+        break;
+        
+      case 'manualAttendance':
+        // 補登出勤
+        result = handleManualAttendance(request);
+        break;
+        
+      case 'getMyAttendance':
+        // 查詢我的出勤
+        result = handleGetMyAttendance(request);
+        break;
+        
+      case 'getAllAttendance':
+        // 查詢所有出勤（管理員）
+        result = handleGetAllAttendance(request);
+        break;
+        
+      case 'updateAttendance':
+        // 修改出勤紀錄（管理員）
+        result = handleUpdateAttendance(request);
+        break;
+        
+      case 'getTodayAttendance':
+        // 取得今日打卡狀態
+        result = handleGetTodayAttendance(request);
         break;
         
       default:
@@ -629,6 +666,528 @@ function handleDeleteRevenue(phone, id) {
   
   // 刪除該列
   sheet.deleteRow(rowToDelete);
+  
+  return { success: true };
+}
+
+// ============================================================================
+// 打卡系統 API 處理函數
+// ============================================================================
+
+/**
+ * 格式化時間為 HH:mm 格式
+ */
+function formatTime(date) {
+  if (date instanceof Date) {
+    return Utilities.formatDate(date, 'Asia/Taipei', 'HH:mm');
+  }
+  return date;
+}
+
+/**
+ * 計算兩個時間之間的小時數
+ */
+function calculateHours(clockIn, clockOut) {
+  if (!clockIn || !clockOut) return 0;
+  const inTime = new Date(clockIn).getTime();
+  const outTime = new Date(clockOut).getTime();
+  const hours = (outTime - inTime) / (1000 * 60 * 60);
+  return Math.round(hours * 100) / 100; // 四捨五入到小數點後兩位
+}
+
+/**
+ * 取得今日日期字串
+ */
+function getTodayDateString() {
+  return Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy-MM-dd');
+}
+
+/**
+ * 上班打卡
+ * 
+ * @param {Object} request
+ *   - phone: 員工手機
+ *   - market_id: 市場 ID
+ *   - is_manual: 是否為補登（選填）
+ *   - manual_time: 手動指定時間（選填，補登時使用）
+ *   - note: 備註（選填）
+ */
+function handleClockIn(request) {
+  const { phone, market_id, is_manual, manual_time, note } = request;
+  
+  if (!phone || !market_id) {
+    return { success: false, error: '缺少必要參數' };
+  }
+  
+  // 驗證使用者
+  const users = getSheetData(SHEET_USERS);
+  const user = users.find(u => u['手機'] === phone);
+  
+  if (!user || user['狀態'] !== '啟用') {
+    return { success: false, error: '使用者驗證失敗' };
+  }
+  
+  // 驗證市場
+  const markets = getSheetData(SHEET_MARKETS);
+  const market = markets.find(m => m['id'] === market_id);
+  
+  if (!market) {
+    return { success: false, error: '找不到市場資料' };
+  }
+  
+  // 檢查今日該市場是否已有未完成的打卡
+  const today = getTodayDateString();
+  const attendances = getSheetData(SHEET_ATTENDANCE);
+  const existingRecord = attendances.find(a => 
+    a['員工手機'] === phone && 
+    a['market_id'] === market_id &&
+    formatDate(a['日期']) === today &&
+    !a['下班時間']
+  );
+  
+  if (existingRecord) {
+    return { success: false, error: '今日此市場已有未完成的打卡紀錄，請先下班打卡' };
+  }
+  
+  // 準備寫入資料
+  const id = generateId();
+  const clockInTime = is_manual && manual_time ? new Date(manual_time) : new Date();
+  const createdAt = new Date();
+  
+  const sheet = getSheet(SHEET_ATTENDANCE);
+  sheet.appendRow([
+    "'" + phone,                 // 員工手機
+    user['名稱'],                // 員工姓名
+    market['名稱'],              // 市場
+    today,                       // 日期
+    clockInTime,                 // 上班時間
+    '',                          // 下班時間（留空）
+    0,                           // 時數
+    is_manual ? '是' : '否',     // 補登
+    note || '',                  // 備註
+    createdAt,                   // 建立時間
+    '',                          // 修改者
+    id,                          // id
+    market_id                    // market_id
+  ]);
+  
+  return { 
+    success: true, 
+    data: { 
+      id,
+      clock_in: Utilities.formatDate(clockInTime, 'Asia/Taipei', "yyyy-MM-dd'T'HH:mm:ss")
+    } 
+  };
+}
+
+/**
+ * 下班打卡
+ * 
+ * @param {Object} request
+ *   - phone: 員工手機
+ *   - attendance_id: 出勤紀錄 ID（選填，若不指定則找今日未下班的紀錄）
+ *   - is_manual: 是否為補登
+ *   - manual_time: 手動指定時間
+ */
+function handleClockOut(request) {
+  const { phone, attendance_id, is_manual, manual_time } = request;
+  
+  if (!phone) {
+    return { success: false, error: '缺少必要參數' };
+  }
+  
+  // 驗證使用者
+  const users = getSheetData(SHEET_USERS);
+  const user = users.find(u => u['手機'] === phone);
+  
+  if (!user || user['狀態'] !== '啟用') {
+    return { success: false, error: '使用者驗證失敗' };
+  }
+  
+  const sheet = getSheet(SHEET_ATTENDANCE);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  const idCol = headers.indexOf('id');
+  const phoneCol = headers.indexOf('員工手機');
+  const dateCol = headers.indexOf('日期');
+  const clockInCol = headers.indexOf('上班時間');
+  const clockOutCol = headers.indexOf('下班時間');
+  const hoursCol = headers.indexOf('時數');
+  const isManualCol = headers.indexOf('補登');
+  const updatedByCol = headers.indexOf('修改者');
+  
+  const today = getTodayDateString();
+  let rowToUpdate = -1;
+  let clockInTime = null;
+  
+  // 找到要更新的紀錄
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const rowId = row[idCol];
+    const rowPhone = row[phoneCol];
+    const rowDate = formatDate(row[dateCol]);
+    const rowClockOut = row[clockOutCol];
+    
+    if (attendance_id) {
+      // 指定 ID 時直接找該筆
+      if (rowId === attendance_id) {
+        if (rowClockOut) {
+          return { success: false, error: '該紀錄已經有下班時間' };
+        }
+        rowToUpdate = i + 1;
+        clockInTime = row[clockInCol];
+        break;
+      }
+    } else {
+      // 沒指定 ID 時找今日未下班的紀錄
+      if (rowPhone === phone && rowDate === today && !rowClockOut) {
+        rowToUpdate = i + 1;
+        clockInTime = row[clockInCol];
+        break;
+      }
+    }
+  }
+  
+  if (rowToUpdate === -1) {
+    return { success: false, error: '找不到未下班的打卡紀錄' };
+  }
+  
+  // 更新下班時間與時數
+  const clockOutTime = is_manual && manual_time ? new Date(manual_time) : new Date();
+  const hours = calculateHours(clockInTime, clockOutTime);
+  
+  sheet.getRange(rowToUpdate, clockOutCol + 1).setValue(clockOutTime);
+  sheet.getRange(rowToUpdate, hoursCol + 1).setValue(hours);
+  
+  if (is_manual) {
+    sheet.getRange(rowToUpdate, isManualCol + 1).setValue('是');
+  }
+  
+  sheet.getRange(rowToUpdate, updatedByCol + 1).setValue(phone);
+  
+  return { 
+    success: true, 
+    data: { 
+      clock_out: Utilities.formatDate(clockOutTime, 'Asia/Taipei', "yyyy-MM-dd'T'HH:mm:ss"),
+      hours 
+    } 
+  };
+}
+
+/**
+ * 補登完整出勤
+ * 
+ * @param {Object} request
+ *   - phone: 員工手機
+ *   - market_id: 市場 ID
+ *   - date: 日期
+ *   - clock_in: 上班時間
+ *   - clock_out: 下班時間
+ *   - note: 備註
+ */
+function handleManualAttendance(request) {
+  const { phone, market_id, date, clock_in, clock_out, note } = request;
+  
+  if (!phone || !market_id || !date || !clock_in || !clock_out) {
+    return { success: false, error: '缺少必要參數' };
+  }
+  
+  // 驗證使用者
+  const users = getSheetData(SHEET_USERS);
+  const user = users.find(u => u['手機'] === phone);
+  
+  if (!user || user['狀態'] !== '啟用') {
+    return { success: false, error: '使用者驗證失敗' };
+  }
+  
+  // 驗證市場
+  const markets = getSheetData(SHEET_MARKETS);
+  const market = markets.find(m => m['id'] === market_id);
+  
+  if (!market) {
+    return { success: false, error: '找不到市場資料' };
+  }
+  
+  // 準備寫入資料
+  const id = generateId();
+  const clockInTime = new Date(clock_in);
+  const clockOutTime = new Date(clock_out);
+  const hours = calculateHours(clockInTime, clockOutTime);
+  const createdAt = new Date();
+  
+  const sheet = getSheet(SHEET_ATTENDANCE);
+  sheet.appendRow([
+    "'" + phone,         // 員工手機
+    user['名稱'],        // 員工姓名
+    market['名稱'],      // 市場
+    date,                // 日期
+    clockInTime,         // 上班時間
+    clockOutTime,        // 下班時間
+    hours,               // 時數
+    '是',                // 補登 = 是
+    note || '',          // 備註
+    createdAt,           // 建立時間
+    '',                  // 修改者
+    id,                  // id
+    market_id            // market_id
+  ]);
+  
+  return { success: true, data: { id, hours } };
+}
+
+/**
+ * 取得今日打卡狀態
+ * 
+ * @param {Object} request
+ *   - phone: 員工手機
+ */
+function handleGetTodayAttendance(request) {
+  const { phone } = request;
+  
+  if (!phone) {
+    return { success: false, error: '缺少手機號碼' };
+  }
+  
+  const today = getTodayDateString();
+  const attendances = getSheetData(SHEET_ATTENDANCE);
+  
+  // 找出今日的打卡紀錄
+  const todayRecords = attendances
+    .filter(a => a['員工手機'] === phone && formatDate(a['日期']) === today)
+    .map(a => ({
+      id: a['id'],
+      market_id: a['market_id'],
+      market_name: a['市場'],
+      clock_in: a['上班時間'] ? Utilities.formatDate(a['上班時間'], 'Asia/Taipei', "yyyy-MM-dd'T'HH:mm:ss") : null,
+      clock_out: a['下班時間'] ? Utilities.formatDate(a['下班時間'], 'Asia/Taipei', "yyyy-MM-dd'T'HH:mm:ss") : null,
+      hours: a['時數'] || 0,
+      is_manual: a['補登'] === '是'
+    }));
+  
+  return { success: true, data: todayRecords };
+}
+
+/**
+ * 查詢我的出勤紀錄
+ * 
+ * @param {Object} request
+ *   - phone: 員工手機
+ *   - date_from: 起始日期（選填）
+ *   - date_to: 結束日期（選填）
+ *   - limit: 筆數限制（選填）
+ *   - offset: 跳過筆數（選填）
+ */
+function handleGetMyAttendance(request) {
+  const { phone, date_from, date_to, limit, offset } = request;
+  
+  if (!phone) {
+    return { success: false, error: '缺少手機號碼' };
+  }
+  
+  let attendances = getSheetData(SHEET_ATTENDANCE);
+  
+  // 過濾該員工的紀錄
+  attendances = attendances.filter(a => a['員工手機'] === phone);
+  
+  // 日期篩選
+  if (date_from) {
+    attendances = attendances.filter(a => formatDate(a['日期']) >= date_from);
+  }
+  if (date_to) {
+    attendances = attendances.filter(a => formatDate(a['日期']) <= date_to);
+  }
+  
+  // 排序：日期由新到舊
+  attendances.sort((a, b) => {
+    const dateA = formatDate(a['日期']);
+    const dateB = formatDate(b['日期']);
+    return dateB > dateA ? 1 : -1;
+  });
+  
+  // 格式化輸出
+  const records = attendances.map(a => ({
+    id: a['id'],
+    date: formatDate(a['日期']),
+    market_id: a['market_id'],
+    market_name: a['市場'],
+    clock_in: a['上班時間'] ? Utilities.formatDate(a['上班時間'], 'Asia/Taipei', "yyyy-MM-dd'T'HH:mm:ss") : null,
+    clock_out: a['下班時間'] ? Utilities.formatDate(a['下班時間'], 'Asia/Taipei', "yyyy-MM-dd'T'HH:mm:ss") : null,
+    hours: a['時數'] || 0,
+    is_manual: a['補登'] === '是',
+    note: a['備註'] || ''
+  }));
+  
+  // 分頁
+  const startIndex = offset || 0;
+  const endIndex = limit ? startIndex + limit : records.length;
+  const paginatedRecords = records.slice(startIndex, endIndex);
+  
+  // 統計
+  const summary = {
+    total_records: records.length,
+    total_hours: records.reduce((sum, r) => sum + (r.hours || 0), 0)
+  };
+  
+  return { success: true, data: { records: paginatedRecords, summary } };
+}
+
+/**
+ * 查詢所有出勤紀錄（管理員）
+ * 
+ * @param {Object} request
+ *   - phone: 請求者手機
+ *   - filters: 篩選條件
+ *     - employee_phone: 員工手機
+ *     - market_id: 市場 ID
+ *     - date_from: 起始日期
+ *     - date_to: 結束日期
+ *   - limit: 筆數限制
+ *   - offset: 跳過筆數
+ */
+function handleGetAllAttendance(request) {
+  const { phone, filters, limit, offset } = request;
+  
+  if (!phone) {
+    return { success: false, error: '缺少手機號碼' };
+  }
+  
+  // 驗證是否為管理員
+  const users = getSheetData(SHEET_USERS);
+  const requestUser = users.find(u => u['手機'] === phone);
+  
+  if (!requestUser || requestUser['權限'] !== 'admin') {
+    return { success: false, error: '權限不足' };
+  }
+  
+  let attendances = getSheetData(SHEET_ATTENDANCE);
+  
+  // 套用篩選條件
+  if (filters) {
+    if (filters.employee_phone) {
+      attendances = attendances.filter(a => a['員工手機'] === filters.employee_phone);
+    }
+    if (filters.market_id) {
+      attendances = attendances.filter(a => a['market_id'] === filters.market_id);
+    }
+    if (filters.date_from) {
+      attendances = attendances.filter(a => formatDate(a['日期']) >= filters.date_from);
+    }
+    if (filters.date_to) {
+      attendances = attendances.filter(a => formatDate(a['日期']) <= filters.date_to);
+    }
+  }
+  
+  // 排序：日期由新到舊
+  attendances.sort((a, b) => {
+    const dateA = formatDate(a['日期']);
+    const dateB = formatDate(b['日期']);
+    return dateB > dateA ? 1 : -1;
+  });
+  
+  // 格式化輸出
+  const records = attendances.map(a => ({
+    id: a['id'],
+    employee_phone: a['員工手機'],
+    employee_name: a['員工姓名'],
+    date: formatDate(a['日期']),
+    market_id: a['market_id'],
+    market_name: a['市場'],
+    clock_in: a['上班時間'] ? Utilities.formatDate(a['上班時間'], 'Asia/Taipei', "yyyy-MM-dd'T'HH:mm:ss") : null,
+    clock_out: a['下班時間'] ? Utilities.formatDate(a['下班時間'], 'Asia/Taipei', "yyyy-MM-dd'T'HH:mm:ss") : null,
+    hours: a['時數'] || 0,
+    is_manual: a['補登'] === '是',
+    note: a['備註'] || ''
+  }));
+  
+  // 分頁
+  const startIndex = offset || 0;
+  const endIndex = limit ? startIndex + limit : records.length;
+  const paginatedRecords = records.slice(startIndex, endIndex);
+  
+  // 統計
+  const summary = {
+    total_records: records.length,
+    total_hours: records.reduce((sum, r) => sum + (r.hours || 0), 0)
+  };
+  
+  return { success: true, data: { records: paginatedRecords, summary } };
+}
+
+/**
+ * 修改出勤紀錄（管理員）
+ * 
+ * @param {Object} request
+ *   - phone: 請求者手機
+ *   - attendance_id: 出勤紀錄 ID
+ *   - clock_in: 新的上班時間（選填）
+ *   - clock_out: 新的下班時間（選填）
+ *   - note: 備註（選填）
+ */
+function handleUpdateAttendance(request) {
+  const { phone, attendance_id, clock_in, clock_out, note } = request;
+  
+  if (!phone || !attendance_id) {
+    return { success: false, error: '缺少必要參數' };
+  }
+  
+  // 驗證是否為管理員
+  const users = getSheetData(SHEET_USERS);
+  const requestUser = users.find(u => u['手機'] === phone);
+  
+  if (!requestUser || requestUser['權限'] !== 'admin') {
+    return { success: false, error: '權限不足' };
+  }
+  
+  const sheet = getSheet(SHEET_ATTENDANCE);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  const idCol = headers.indexOf('id');
+  const clockInCol = headers.indexOf('上班時間');
+  const clockOutCol = headers.indexOf('下班時間');
+  const hoursCol = headers.indexOf('時數');
+  const noteCol = headers.indexOf('備註');
+  const updatedByCol = headers.indexOf('修改者');
+  
+  let rowToUpdate = -1;
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][idCol] === attendance_id) {
+      rowToUpdate = i + 1;
+      break;
+    }
+  }
+  
+  if (rowToUpdate === -1) {
+    return { success: false, error: '找不到該筆紀錄' };
+  }
+  
+  // 更新欄位
+  let newClockIn = data[rowToUpdate - 1][clockInCol];
+  let newClockOut = data[rowToUpdate - 1][clockOutCol];
+  
+  if (clock_in) {
+    newClockIn = new Date(clock_in);
+    sheet.getRange(rowToUpdate, clockInCol + 1).setValue(newClockIn);
+  }
+  
+  if (clock_out) {
+    newClockOut = new Date(clock_out);
+    sheet.getRange(rowToUpdate, clockOutCol + 1).setValue(newClockOut);
+  }
+  
+  // 重新計算時數
+  if (newClockIn && newClockOut) {
+    const hours = calculateHours(newClockIn, newClockOut);
+    sheet.getRange(rowToUpdate, hoursCol + 1).setValue(hours);
+  }
+  
+  if (note !== undefined) {
+    sheet.getRange(rowToUpdate, noteCol + 1).setValue(note);
+  }
+  
+  sheet.getRange(rowToUpdate, updatedByCol + 1).setValue(phone);
   
   return { success: true };
 }

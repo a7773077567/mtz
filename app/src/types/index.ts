@@ -73,3 +73,37 @@ export interface RevenuesResponse {
   summary: RevenueSummary
 }
 
+// Attendance Record
+export interface Attendance {
+  id: string
+  employee_phone?: string
+  employee_name?: string
+  date: string
+  market_id: string
+  market_name: string
+  clock_in: string | null
+  clock_out: string | null
+  hours: number
+  is_manual: boolean
+  note?: string
+}
+
+// Attendance Filters
+export interface AttendanceFilters {
+  employee_phone?: string
+  market_id?: string
+  date_from?: string
+  date_to?: string
+}
+
+// Attendance Summary
+export interface AttendanceSummary {
+  total_records: number
+  total_hours: number
+}
+
+// Attendance Response
+export interface AttendanceResponse {
+  records: Attendance[]
+  summary: AttendanceSummary
+}

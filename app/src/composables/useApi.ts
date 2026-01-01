@@ -6,6 +6,9 @@ import type {
   RevenuesResponse,
   RevenueFilters,
   User,
+  Attendance,
+  AttendanceResponse,
+  AttendanceFilters,
 } from '../types'
 
 const API_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL
@@ -79,6 +82,77 @@ export function useApi() {
     return request<void>('deleteRevenue', { phone, id })
   }
 
+  // ============ 打卡系統 ============
+
+  // 上班打卡
+  const clockIn = async (data: {
+    phone: string
+    market_id: string
+    is_manual?: boolean
+    manual_time?: string
+    note?: string
+  }): Promise<ApiResponse<{ id: string; clock_in: string }>> => {
+    return request<{ id: string; clock_in: string }>('clockIn', data)
+  }
+
+  // 下班打卡
+  const clockOut = async (data: {
+    phone: string
+    attendance_id?: string
+    is_manual?: boolean
+    manual_time?: string
+  }): Promise<ApiResponse<{ clock_out: string; hours: number }>> => {
+    return request<{ clock_out: string; hours: number }>('clockOut', data)
+  }
+
+  // 補登出勤
+  const manualAttendance = async (data: {
+    phone: string
+    market_id: string
+    date: string
+    clock_in: string
+    clock_out: string
+    note?: string
+  }): Promise<ApiResponse<{ id: string; hours: number }>> => {
+    return request<{ id: string; hours: number }>('manualAttendance', data)
+  }
+
+  // 取得今日打卡狀態
+  const getTodayAttendance = async (phone: string): Promise<ApiResponse<Attendance[]>> => {
+    return request<Attendance[]>('getTodayAttendance', { phone })
+  }
+
+  // 查詢我的出勤紀錄
+  const getMyAttendance = async (
+    phone: string,
+    filters?: { date_from?: string; date_to?: string },
+    limit?: number,
+    offset?: number
+  ): Promise<ApiResponse<AttendanceResponse>> => {
+    return request<AttendanceResponse>('getMyAttendance', { phone, ...filters, limit, offset })
+  }
+
+  // 查詢所有出勤紀錄（管理員）
+  const getAllAttendance = async (
+    phone: string,
+    filters?: AttendanceFilters,
+    limit?: number,
+    offset?: number
+  ): Promise<ApiResponse<AttendanceResponse>> => {
+    return request<AttendanceResponse>('getAllAttendance', { phone, filters, limit, offset })
+  }
+
+  // 修改出勤紀錄（管理員）
+  const updateAttendance = async (data: {
+    phone: string
+    attendance_id: string
+    clock_in?: string
+    clock_out?: string
+    note?: string
+  }): Promise<ApiResponse<void>> => {
+    return request<void>('updateAttendance', data)
+  }
+
   return {
     login,
     init,
@@ -87,6 +161,13 @@ export function useApi() {
     getRevenues,
     getUsers,
     deleteRevenue,
+    // 打卡系統
+    clockIn,
+    clockOut,
+    manualAttendance,
+    getTodayAttendance,
+    getMyAttendance,
+    getAllAttendance,
+    updateAttendance,
   }
 }
-

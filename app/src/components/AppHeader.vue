@@ -18,6 +18,13 @@
       <!-- 導航連結 -->
       <nav class="header-nav">
         <router-link 
+          to="/attendance" 
+          class="nav-item"
+          :class="{ active: currentRoute === 'attendance' || currentRoute === 'my-attendance' || currentRoute === 'attendance-admin' }"
+        >
+          打卡
+        </router-link>
+        <router-link 
           to="/submit" 
           class="nav-item"
           :class="{ active: currentRoute === 'submit' }"
