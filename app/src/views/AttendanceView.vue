@@ -161,6 +161,17 @@
             class="view-records-btn"
             @click="router.push('/my-attendance')"
           />
+
+          <!-- 管理員專用 -->
+          <Button
+            v-if="auth.user.value?.role === 'admin'"
+            label="出勤管理"
+            icon="pi pi-users"
+            severity="secondary"
+            outlined
+            class="admin-btn"
+            @click="router.push('/attendance-admin')"
+          />
         </div>
       </Transition>
     </main>
@@ -577,6 +588,11 @@ const handleManualAttendance = async () => {
   width: 100%;
   font-size: 1.1rem;
   padding: var(--space-md) var(--space-lg);
+}
+
+.admin-btn {
+  width: 100%;
+  margin-top: var(--space-sm);
 }
 
 /* 動畫 */
