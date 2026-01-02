@@ -153,6 +153,11 @@ export function useApi() {
     return request<void>('updateAttendance', data)
   }
 
+  // 刪除出勤紀錄（管理員）
+  const deleteAttendance = async (phone: string, attendance_id: string): Promise<ApiResponse<void>> => {
+    return request<void>('deleteAttendance', { phone, attendance_id })
+  }
+
   return {
     login,
     init,
@@ -169,5 +174,6 @@ export function useApi() {
     getMyAttendance,
     getAllAttendance,
     updateAttendance,
+    deleteAttendance,
   }
 }

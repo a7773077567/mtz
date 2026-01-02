@@ -156,6 +156,11 @@ function doPost(e) {
         result = handleUpdateAttendance(request);
         break;
         
+      case 'deleteAttendance':
+        // 刪除出勤紀錄（管理員）
+        result = handleDeleteAttendance(request);
+        break;
+        
       case 'getTodayAttendance':
         // 取得今日打卡狀態
         result = handleGetTodayAttendance(request);
@@ -1188,6 +1193,51 @@ function handleUpdateAttendance(request) {
   }
   
   sheet.getRange(rowToUpdate, updatedByCol + 1).setValue("'" + phone);
+  
+  return { success: true };
+}
+
+/**
+ * 刪除出勤紀錄（僅管理員）
+ */
+function handleDeleteAttendance(request) {
+  const { phone, attendance_id } = request;
+  
+  if (!phone || !attendance_id) {
+    return { success: false, error: '缺少必要參數' };
+  }
+  
+  // 驗證管理員權限
+  const users = getSheetData(SHEET_USERS);
+  const user = users.find(u => u['手機'] === phone);
+  if (!user || user['權限'] !== 'admin') {
+    return { success: false, error: '權限不足，只有管理員可以刪除出勤紀錄' };
+  }
+  
+  const sheet = getSheet(SHEET_ATTENDANCE);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const idCol = headers.indexOf('id');
+  
+  if (idCol === -1) {
+    return { success: false, error: '找不到 id 欄位' };
+  }
+  
+  // 找到要刪除的行
+  let rowToDelete = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][idCol] === attendance_id) {
+      rowToDelete = i + 1; // Sheet 是 1-indexed
+      break;
+    }
+  }
+  
+  if (rowToDelete === -1) {
+    return { success: false, error: '找不到該出勤紀錄' };
+  }
+  
+  // 刪除該行
+  sheet.deleteRow(rowToDelete);
   
   return { success: true };
 }

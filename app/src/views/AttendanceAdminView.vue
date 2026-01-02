@@ -177,6 +177,34 @@
             <Button label="取消" severity="secondary" outlined @click="closeEditModal" />
             <Button label="儲存" :loading="saving" @click="saveEdit" />
           </div>
+          <div class="modal-delete">
+            <Button 
+              label="刪除此紀錄" 
+              severity="danger" 
+              text 
+              :loading="deleting"
+              @click="confirmDelete" 
+            />
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- 刪除確認 Modal -->
+    <Transition name="modal">
+      <div v-if="showDeleteConfirm" class="modal-overlay" @click.self="showDeleteConfirm = false">
+        <div class="modal-content card delete-confirm-modal">
+          <h2 class="modal-title">確認刪除</h2>
+          <p class="delete-warning">確定要刪除這筆出勤紀錄嗎？此操作無法復原。</p>
+          <div class="modal-info" v-if="recordToDelete">
+            <p><strong>員工:</strong> {{ recordToDelete.employee_name }}</p>
+            <p><strong>日期:</strong> {{ recordToDelete.date }}</p>
+            <p><strong>市場:</strong> {{ recordToDelete.market_name }}</p>
+          </div>
+          <div class="modal-actions">
+            <Button label="取消" severity="secondary" outlined @click="showDeleteConfirm = false" />
+            <Button label="確認刪除" severity="danger" :loading="deleting" @click="executeDelete" />
+          </div>
         </div>
       </div>
     </Transition>
@@ -228,6 +256,11 @@ const editClockInTime = ref<Date | null>(null)
 const editClockOutTime = ref<Date | null>(null)
 const editNote = ref('')
 const saving = ref(false)
+
+// 刪除確認
+const showDeleteConfirm = ref(false)
+const recordToDelete = ref<Attendance | null>(null)
+const deleting = ref(false)
 
 // 快速篩選
 const quickFilters = [
@@ -366,6 +399,41 @@ async function saveEdit() {
     toast.add({
       severity: 'error',
       summary: '儲存失敗',
+      detail: res.error,
+      life: 3000,
+    })
+  }
+}
+
+// 刪除確認
+function confirmDelete() {
+  if (!editingRecord.value) return
+  recordToDelete.value = editingRecord.value
+  showDeleteConfirm.value = true
+}
+
+// 執行刪除
+async function executeDelete() {
+  if (!auth.user.value || !recordToDelete.value) return
+  
+  deleting.value = true
+  const res = await api.deleteAttendance(auth.user.value.phone, recordToDelete.value.id)
+  deleting.value = false
+
+  if (res.success) {
+    toast.add({
+      severity: 'success',
+      summary: '刪除成功',
+      life: 3000,
+    })
+    showDeleteConfirm.value = false
+    recordToDelete.value = null
+    closeEditModal()
+    loadData()
+  } else {
+    toast.add({
+      severity: 'error',
+      summary: '刪除失敗',
       detail: res.error,
       life: 3000,
     })
@@ -670,6 +738,20 @@ onMounted(async () => {
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
+}
+
+/* 刪除按鈕 */
+.modal-delete {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.delete-warning {
+  color: var(--color-danger);
+  margin-bottom: var(--space-md);
+  font-weight: 500;
 }
 
 @media (max-width: 480px) {
