@@ -1042,6 +1042,13 @@ function handleManualAttendance(request) {
     market_id            // market_id
   ]);
   
+  // 發送 Line 通知（補登也發）
+  const clockInStr = Utilities.formatDate(clockInTime, 'Asia/Taipei', 'HH:mm');
+  const clockOutStr = Utilities.formatDate(clockOutTime, 'Asia/Taipei', 'HH:mm');
+  const hoursFormatted = hours.toFixed(2);
+  const message = `📝 ${user['名稱']} 補登出勤\n📍 市場：${market['名稱']}\n📅 日期：${date}\n⏰ 時間：${clockInStr} ~ ${clockOutStr}\n⏱️ 工時：${hoursFormatted} 小時`;
+  sendLineNotification(message);
+  
   return { success: true, data: { id, hours } };
 }
 
