@@ -54,6 +54,10 @@ const SHEET_MARKETS = 'markets';
 const SHEET_REVENUES = 'revenues';
 const SHEET_ATTENDANCE = 'attendance';
 
+// Line Messaging API 設定
+const LINE_CHANNEL_ACCESS_TOKEN = 'JkwSY7NQLTb54u7Ecna5btndOyfHpqqRvIkHiQ++LUAOnO95HFjJ1eicn4ICK2GT1MmGtxLJJXtvqMKdSZ51pZ4V05BpZ6cCCUDKzbbH2HVynIMvboGhG3WdFNlvsaOeFCUkqkXqyr2+lS08eDjP/gdB04t89/1O/w1cDnyilFU=';
+const LINE_GROUP_ID = 'C02fbea4d22fc66fe2958834ed32febe1';
+
 // ============================================================================
 // 主要進入點
 // ============================================================================
@@ -254,6 +258,86 @@ function getSheetData(name) {
     });
     return obj;
   });
+}
+
+/**
+ * 發送 Line 群組通知
+ * 
+ * 使用 Line Messaging API 的 Push Message 功能發送訊息到群組。
+ * 發送失敗不會影響主要流程（打卡仍會成功）。
+ * 
+ * @param {string} message - 要發送的訊息內容
+ */
+function sendLineNotification(message) {
+  try {
+    const url = 'https://api.line.me/v2/bot/message/push';
+    
+    const payload = {
+      to: LINE_GROUP_ID,
+      messages: [
+        {
+          type: 'text',
+          text: message
+        }
+      ]
+    };
+    
+    const options = {
+      method: 'post',
+      contentType: 'application/json',
+      headers: {
+        'Authorization': 'Bearer ' + LINE_CHANNEL_ACCESS_TOKEN
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true // 不要因為 HTTP 錯誤而拋出例外
+    };
+    
+    const response = UrlFetchApp.fetch(url, options);
+    const responseCode = response.getResponseCode();
+    
+    if (responseCode !== 200) {
+      // 記錄錯誤但不中斷流程
+      Logger.log('Line 通知發送失敗: ' + response.getContentText());
+    }
+  } catch (err) {
+    // 發送失敗不影響主流程
+    Logger.log('Line 通知錯誤: ' + err.message);
+  }
+}
+
+/**
+ * 測試 Line 通知（可直接在 GAS 編輯器執行）
+ * 執行後查看 Logger（查看 > 日誌 或 Ctrl+Enter）
+ */
+function testLineNotification() {
+  const url = 'https://api.line.me/v2/bot/message/push';
+  
+  const payload = {
+    to: LINE_GROUP_ID,
+    messages: [
+      {
+        type: 'text',
+        text: '🧪 測試訊息：Line 通知功能正常運作！'
+      }
+    ]
+  };
+  
+  const options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'Authorization': 'Bearer ' + LINE_CHANNEL_ACCESS_TOKEN
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+  
+  const response = UrlFetchApp.fetch(url, options);
+  
+  Logger.log('Response Code: ' + response.getResponseCode());
+  Logger.log('Response Body: ' + response.getContentText());
+  Logger.log('Token 前 20 字元: ' + LINE_CHANNEL_ACCESS_TOKEN.substring(0, 20));
+  Logger.log('Group ID: ' + LINE_GROUP_ID);
 }
 
 /**
@@ -776,6 +860,13 @@ function handleClockIn(request) {
     market_id                    // market_id
   ]);
   
+  // 即時打卡才發送 Line 通知（補登不發）
+  if (!is_manual) {
+    const timeStr = Utilities.formatDate(clockInTime, 'Asia/Taipei', 'HH:mm');
+    const message = `✅ ${user['名稱']} 已上班打卡\n📍 市場：${market['名稱']}\n⏰ 時間：${timeStr}`;
+    sendLineNotification(message);
+  }
+  
   return { 
     success: true, 
     data: { 
@@ -870,6 +961,19 @@ function handleClockOut(request) {
   }
   
   sheet.getRange(rowToUpdate, updatedByCol + 1).setValue("'" + phone);
+  
+  // 即時打卡才發送 Line 通知（補登不發）
+  if (!is_manual) {
+    // 取得市場名稱
+    const marketCol = headers.indexOf('市場');
+    const marketName = data[rowToUpdate - 1][marketCol];
+    
+    const clockInStr = Utilities.formatDate(clockInTime, 'Asia/Taipei', 'HH:mm');
+    const clockOutStr = Utilities.formatDate(clockOutTime, 'Asia/Taipei', 'HH:mm');
+    const hoursFormatted = hours.toFixed(2);
+    const message = `🏠 ${user['名稱']} 已下班打卡\n📍 市場：${marketName}\n⏰ 時間：${clockInStr} ~ ${clockOutStr}\n⏱️ 今日工時：${hoursFormatted} 小時`;
+    sendLineNotification(message);
+  }
   
   return { 
     success: true, 
