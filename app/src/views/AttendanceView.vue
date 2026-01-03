@@ -119,22 +119,16 @@
                 <div class="form-row">
                   <div class="form-group">
                     <label class="form-label">上班時間</label>
-                    <DatePicker
+                    <TimeInput
                       v-model="manualClockInTime"
-                      timeOnly
-                      showIcon
-                      fluid
-                      placeholder="選擇時間"
+                      placeholder="00:00"
                     />
                   </div>
                   <div class="form-group">
                     <label class="form-label">下班時間</label>
-                    <DatePicker
+                    <TimeInput
                       v-model="manualClockOutTime"
-                      timeOnly
-                      showIcon
-                      fluid
-                      placeholder="選擇時間"
+                      placeholder="00:00"
                     />
                   </div>
                 </div>
@@ -191,6 +185,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import AppHeader from '../components/AppHeader.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import TimeInput from '../components/TimeInput.vue'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
 import { useCache } from '../composables/useCache'
