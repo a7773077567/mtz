@@ -150,6 +150,7 @@ export function useApi() {
     attendance_id: string
     clock_in?: string
     clock_out?: string
+    break_time?: number // 休息時間（分鐘）
     note?: string
   }): Promise<ApiResponse<void>> => {
     return request<void>('updateAttendance', data)

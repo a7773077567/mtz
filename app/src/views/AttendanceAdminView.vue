@@ -101,7 +101,7 @@
 
       <!-- 出勤列表 -->
       <Transition name="fade" mode="out-in">
-        <LoadingSpinner v-if="loading" text="載入中..." />
+        <AttendanceSkeleton v-if="loading" :count="5" />
         <div v-else-if="records.length === 0" class="empty-state card">
           <i class="pi pi-calendar-times empty-icon"></i>
           <p>沒有出勤紀錄</p>
@@ -166,6 +166,17 @@
             />
           </div>
           <div class="form-group">
+            <label class="filter-label">休息時間（分鐘）</label>
+            <InputNumber 
+              v-model="editBreakTime" 
+              inputId="edit-break" 
+              :min="0"
+              :max="480"
+              placeholder="0" 
+              fluid 
+            />
+          </div>
+          <div class="form-group">
             <label class="filter-label">備註</label>
             <InputText v-model="editNote" fluid />
           </div>
@@ -218,8 +229,9 @@ import DatePicker from 'primevue/datepicker'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
 import AppHeader from '../components/AppHeader.vue'
-import LoadingSpinner from '../components/LoadingSpinner.vue'
+import AttendanceSkeleton from '../components/AttendanceSkeleton.vue'
 import TimeInput from '../components/TimeInput.vue'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
@@ -251,6 +263,7 @@ const dateToObj = ref<Date | null>(null)
 const editingRecord = ref<Attendance | null>(null)
 const editClockInTime = ref<Date | null>(null)
 const editClockOutTime = ref<Date | null>(null)
+const editBreakTime = ref<number | null>(0)
 const editNote = ref('')
 const saving = ref(false)
 
@@ -374,6 +387,7 @@ function openEditModal(record: Attendance) {
   editingRecord.value = record
   editClockInTime.value = parseTimeToDate(record.clock_in)
   editClockOutTime.value = parseTimeToDate(record.clock_out)
+  editBreakTime.value = record.break_time || 0
   editNote.value = record.note || ''
 }
 
@@ -390,6 +404,7 @@ async function saveEdit() {
     attendance_id: editingRecord.value.id,
     clock_in: editClockInTime.value ? `${editingRecord.value.date}T${formatTimeOnly(editClockInTime.value)}:00` : undefined,
     clock_out: editClockOutTime.value ? `${editingRecord.value.date}T${formatTimeOnly(editClockOutTime.value)}:00` : undefined,
+    break_time: editBreakTime.value ?? 0,
     note: editNote.value,
   })
   saving.value = false
@@ -547,6 +562,7 @@ onMounted(async () => {
 
 .filter-actions {
   display: flex;
+  gap: var(--space-sm);
 }
 
 .filter-actions :deep(.p-button) {

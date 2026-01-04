@@ -4,7 +4,7 @@
 
     <main class="page-content">
       <Transition name="fade" mode="out-in">
-        <LoadingSpinner v-if="loadingMarkets" text="載入中..." />
+        <FormSkeleton v-if="loadingMarkets" :fieldCount="7" />
         <div v-else class="form-container card">
           <RevenueForm
             ref="formRef"
@@ -28,7 +28,7 @@ import { useRouter } from 'vue-router'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 import AppHeader from '../components/AppHeader.vue'
-import LoadingSpinner from '../components/LoadingSpinner.vue'
+import FormSkeleton from '../components/FormSkeleton.vue'
 import RevenueForm from '../components/RevenueForm.vue'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'

@@ -73,7 +73,7 @@
 
       <!-- 出勤列表 -->
       <Transition name="fade" mode="out-in">
-        <LoadingSpinner v-if="loading" text="載入中..." />
+        <AttendanceSkeleton v-if="loading" :count="5" />
         <div v-else-if="records.length === 0" class="empty-state card">
           <i class="pi pi-calendar-times empty-icon"></i>
           <p>沒有出勤紀錄</p>
@@ -122,7 +122,7 @@ import { useRouter } from 'vue-router'
 import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import AppHeader from '../components/AppHeader.vue'
-import LoadingSpinner from '../components/LoadingSpinner.vue'
+import AttendanceSkeleton from '../components/AttendanceSkeleton.vue'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
 import type { Attendance, AttendanceSummary } from '../types'

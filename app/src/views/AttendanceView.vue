@@ -4,7 +4,7 @@
 
     <main class="page-content">
       <Transition name="fade" mode="out-in">
-        <LoadingSpinner v-if="loading" text="載入中..." />
+        <ClockInSkeleton v-if="loading" />
         <div v-else class="attendance-container">
           <!-- 今日狀態卡片 -->
           <div class="status-card card">
@@ -244,7 +244,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import AppHeader from '../components/AppHeader.vue'
-import LoadingSpinner from '../components/LoadingSpinner.vue'
+import ClockInSkeleton from '../components/ClockInSkeleton.vue'
 import TimeInput from '../components/TimeInput.vue'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'

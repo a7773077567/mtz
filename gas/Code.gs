@@ -1314,17 +1314,18 @@ function handleGetAllAttendance(request) {
 }
 
 /**
- * 修改出勤紀錄（管理員）
+ * 修改出勤紀錄（僅管理員）
  * 
  * @param {Object} request
  *   - phone: 請求者手機
  *   - attendance_id: 出勤紀錄 ID
  *   - clock_in: 新的上班時間（選填）
  *   - clock_out: 新的下班時間（選填）
+ *   - break_time: 休息時間分鐘（選填）
  *   - note: 備註（選填）
  */
 function handleUpdateAttendance(request) {
-  const { phone, attendance_id, clock_in, clock_out, note } = request;
+  const { phone, attendance_id, clock_in, clock_out, break_time, note } = request;
   
   if (!phone || !attendance_id) {
     return { success: false, error: '缺少必要參數' };
@@ -1346,6 +1347,8 @@ function handleUpdateAttendance(request) {
   const clockInCol = headers.indexOf('上班時間');
   const clockOutCol = headers.indexOf('下班時間');
   const hoursCol = headers.indexOf('時數');
+  const minutesCol = headers.indexOf('總分鐘');
+  const breakTimeCol = headers.indexOf('休息時間');
   const noteCol = headers.indexOf('備註');
   const updatedByCol = headers.indexOf('修改者');
   
@@ -1362,9 +1365,10 @@ function handleUpdateAttendance(request) {
     return { success: false, error: '找不到該筆紀錄' };
   }
   
-  // 更新欄位
+  // 取得現有值
   let newClockIn = data[rowToUpdate - 1][clockInCol];
   let newClockOut = data[rowToUpdate - 1][clockOutCol];
+  let breakMinutes = breakTimeCol !== -1 ? (Number(data[rowToUpdate - 1][breakTimeCol]) || 0) : 0;
   
   if (clock_in) {
     newClockIn = new Date(clock_in);
@@ -1376,10 +1380,23 @@ function handleUpdateAttendance(request) {
     sheet.getRange(rowToUpdate, clockOutCol + 1).setValue(newClockOut);
   }
   
-  // 重新計算時數
+  // 更新休息時間
+  if (break_time !== undefined && breakTimeCol !== -1) {
+    breakMinutes = Number(break_time) || 0;
+    sheet.getRange(rowToUpdate, breakTimeCol + 1).setValue(breakMinutes);
+  }
+  
+  // 重新計算時數（扣除休息時間）
   if (newClockIn && newClockOut) {
-    const hours = calculateHours(newClockIn, newClockOut);
+    const rawHours = calculateHours(newClockIn, newClockOut);
+    const hoursRaw = Math.max(0, rawHours - (breakMinutes / 60));
+    const hours = Math.round(hoursRaw * 100) / 100;
+    const totalMinutes = Math.round(hoursRaw * 60);
+    
     sheet.getRange(rowToUpdate, hoursCol + 1).setValue(hours);
+    if (minutesCol !== -1) {
+      sheet.getRange(rowToUpdate, minutesCol + 1).setValue(totalMinutes);
+    }
   }
   
   if (note !== undefined) {
