@@ -884,9 +884,11 @@ function handleClockIn(request) {
  *   - attendance_id: 出勤紀錄 ID（選填，若不指定則找今日未下班的紀錄）
  *   - is_manual: 是否為補登
  *   - manual_time: 手動指定時間
+ *   - break_time: 休息時間（分鐘，預設 0）
  */
 function handleClockOut(request) {
-  const { phone, attendance_id, is_manual, manual_time } = request;
+  const { phone, attendance_id, is_manual, manual_time, break_time } = request;
+  const breakMinutes = Number(break_time) || 0;
   
   if (!phone) {
     return { success: false, error: '缺少必要參數' };
@@ -910,6 +912,7 @@ function handleClockOut(request) {
   const clockInCol = headers.indexOf('上班時間');
   const clockOutCol = headers.indexOf('下班時間');
   const hoursCol = headers.indexOf('時數');
+  const breakTimeCol = headers.indexOf('休息時間');
   const isManualCol = headers.indexOf('補登');
   const updatedByCol = headers.indexOf('修改者');
   
@@ -951,10 +954,16 @@ function handleClockOut(request) {
   
   // 更新下班時間與時數
   const clockOutTime = is_manual && manual_time ? new Date(manual_time) : new Date();
-  const hours = calculateHours(clockInTime, clockOutTime);
+  const rawHours = calculateHours(clockInTime, clockOutTime);
+  const hours = Math.max(0, rawHours - (breakMinutes / 60)); // 扣除休息時間
   
   sheet.getRange(rowToUpdate, clockOutCol + 1).setValue(clockOutTime);
   sheet.getRange(rowToUpdate, hoursCol + 1).setValue(hours);
+  
+  // 寫入休息時間（如果欄位存在）
+  if (breakTimeCol !== -1) {
+    sheet.getRange(rowToUpdate, breakTimeCol + 1).setValue(breakMinutes);
+  }
   
   if (is_manual) {
     sheet.getRange(rowToUpdate, isManualCol + 1).setValue('是');
@@ -971,7 +980,12 @@ function handleClockOut(request) {
     const clockInStr = Utilities.formatDate(clockInTime, 'Asia/Taipei', 'HH:mm');
     const clockOutStr = Utilities.formatDate(clockOutTime, 'Asia/Taipei', 'HH:mm');
     const hoursFormatted = hours.toFixed(2);
-    const message = `🏠 ${user['名稱']} 已下班打卡\n📍 市場：${marketName}\n⏰ 時間：${clockInStr} ~ ${clockOutStr}\n⏱️ 今日工時：${hoursFormatted} 小時`;
+    
+    let message = `🏠 ${user['名稱']} 已下班打卡\n📍 市場：${marketName}\n⏰ 時間：${clockInStr} ~ ${clockOutStr}`;
+    if (breakMinutes > 0) {
+      message += `\n☕ 休息：${breakMinutes} 分鐘`;
+    }
+    message += `\n⏱️ 實際工時：${hoursFormatted} 小時`;
     sendLineNotification(message);
   }
   
@@ -993,10 +1007,12 @@ function handleClockOut(request) {
  *   - date: 日期
  *   - clock_in: 上班時間
  *   - clock_out: 下班時間
+ *   - break_time: 休息時間（分鐘，預設 0）
  *   - note: 備註
  */
 function handleManualAttendance(request) {
-  const { phone, market_id, date, clock_in, clock_out, note } = request;
+  const { phone, market_id, date, clock_in, clock_out, break_time, note } = request;
+  const breakMinutes = Number(break_time) || 0;
   
   if (!phone || !market_id || !date || !clock_in || !clock_out) {
     return { success: false, error: '缺少必要參數' };
@@ -1022,7 +1038,8 @@ function handleManualAttendance(request) {
   const id = generateId();
   const clockInTime = new Date(clock_in);
   const clockOutTime = new Date(clock_out);
-  const hours = calculateHours(clockInTime, clockOutTime);
+  const rawHours = calculateHours(clockInTime, clockOutTime);
+  const hours = Math.max(0, rawHours - (breakMinutes / 60)); // 扣除休息時間
   const createdAt = new Date();
   
   const sheet = getSheet(SHEET_ATTENDANCE);
@@ -1033,7 +1050,8 @@ function handleManualAttendance(request) {
     date,                // 日期
     clockInTime,         // 上班時間
     clockOutTime,        // 下班時間
-    hours,               // 時數
+    hours,               // 時數（已扣除休息）
+    breakMinutes,        // 休息時間
     '是',                // 補登 = 是
     note || '',          // 備註
     createdAt,           // 建立時間
@@ -1046,7 +1064,12 @@ function handleManualAttendance(request) {
   const clockInStr = Utilities.formatDate(clockInTime, 'Asia/Taipei', 'HH:mm');
   const clockOutStr = Utilities.formatDate(clockOutTime, 'Asia/Taipei', 'HH:mm');
   const hoursFormatted = hours.toFixed(2);
-  const message = `📝 ${user['名稱']} 補登出勤\n📍 市場：${market['名稱']}\n📅 日期：${date}\n⏰ 時間：${clockInStr} ~ ${clockOutStr}\n⏱️ 工時：${hoursFormatted} 小時`;
+  
+  let message = `📝 ${user['名稱']} 補登出勤\n📍 市場：${market['名稱']}\n📅 日期：${date}\n⏰ 時間：${clockInStr} ~ ${clockOutStr}`;
+  if (breakMinutes > 0) {
+    message += `\n☕ 休息：${breakMinutes} 分鐘`;
+  }
+  message += `\n⏱️ 實際工時：${hoursFormatted} 小時`;
   sendLineNotification(message);
   
   return { success: true, data: { id, hours } };

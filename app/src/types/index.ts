@@ -84,6 +84,7 @@ export interface Attendance {
   clock_in: string | null
   clock_out: string | null
   hours: number
+  break_time?: number // 休息時間（分鐘）
   is_manual: boolean
   note?: string
 }

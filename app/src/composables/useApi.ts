@@ -101,6 +101,7 @@ export function useApi() {
     attendance_id?: string
     is_manual?: boolean
     manual_time?: string
+    break_time?: number // 休息時間（分鐘）
   }): Promise<ApiResponse<{ clock_out: string; hours: number }>> => {
     return request<{ clock_out: string; hours: number }>('clockOut', data)
   }
@@ -112,6 +113,7 @@ export function useApi() {
     date: string
     clock_in: string
     clock_out: string
+    break_time?: number // 休息時間（分鐘）
     note?: string
   }): Promise<ApiResponse<{ id: string; hours: number }>> => {
     return request<{ id: string; hours: number }>('manualAttendance', data)

@@ -78,7 +78,7 @@
                 :disabled="!hasOpenRecord"
                 :loading="submitting && clockAction === 'out'"
                 severity="danger"
-                @click="handleClockOut"
+                @click="showClockOutModal = true"
               />
             </div>
 
@@ -96,6 +96,10 @@
             <!-- 補登表單 -->
             <Transition name="slide">
               <div v-if="showManualForm" class="manual-form">
+                <div class="manual-form-header">
+                  <i class="pi pi-calendar-plus"></i>
+                  <span>補登出勤紀錄</span>
+                </div>
                 <div class="form-group">
                   <label class="form-label">日期</label>
                   <DatePicker
@@ -130,6 +134,24 @@
                       v-model="manualClockOutTime"
                       placeholder="00:00"
                     />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">休息時間（分鐘）</label>
+                  <div class="break-time-input">
+                    <InputNumber 
+                      v-model="manualBreakTime" 
+                      inputId="manual-break" 
+                      :min="0"
+                      :max="480"
+                      placeholder="0" 
+                      fluid 
+                    />
+                    <div class="quick-break-btns">
+                      <Button label="30" size="small" severity="secondary" :outlined="manualBreakTime !== 30" @click="manualBreakTime = 30" />
+                      <Button label="60" size="small" severity="secondary" :outlined="manualBreakTime !== 60" @click="manualBreakTime = 60" />
+                      <Button label="90" size="small" severity="secondary" :outlined="manualBreakTime !== 90" @click="manualBreakTime = 90" />
+                    </div>
                   </div>
                 </div>
                 <div class="form-group">
@@ -170,6 +192,43 @@
       </Transition>
     </main>
 
+    <!-- 下班打卡 Modal -->
+    <Transition name="modal">
+      <div v-if="showClockOutModal" class="modal-overlay" @click.self="showClockOutModal = false">
+        <div class="modal-content card">
+          <h2 class="modal-title">下班打卡</h2>
+          <p class="modal-subtitle">請輸入今日休息時間</p>
+          <div class="form-group">
+            <label class="form-label">休息時間（分鐘）</label>
+            <div class="break-time-input">
+              <InputNumber 
+                v-model="clockOutBreakTime" 
+                inputId="clockout-break" 
+                :min="0"
+                :max="480"
+                placeholder="0" 
+                fluid 
+              />
+              <div class="quick-break-btns">
+                <Button label="30" size="small" severity="secondary" :outlined="clockOutBreakTime !== 30" @click="clockOutBreakTime = 30" />
+                <Button label="60" size="small" severity="secondary" :outlined="clockOutBreakTime !== 60" @click="clockOutBreakTime = 60" />
+                <Button label="90" size="small" severity="secondary" :outlined="clockOutBreakTime !== 90" @click="clockOutBreakTime = 90" />
+              </div>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <Button label="取消" severity="secondary" outlined @click="showClockOutModal = false" />
+            <Button 
+              label="確認下班" 
+              severity="danger" 
+              :loading="submitting && clockAction === 'out'"
+              @click="confirmClockOut" 
+            />
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <Toast position="top-center" />
   </div>
 </template>
@@ -183,6 +242,7 @@ import DatePicker from 'primevue/datepicker'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
 import AppHeader from '../components/AppHeader.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import TimeInput from '../components/TimeInput.vue'
@@ -212,7 +272,12 @@ const manualDateObj = ref<Date | null>(null)
 const manualMarket = ref<Market | null>(null)
 const manualClockInTime = ref<Date | null>(null)
 const manualClockOutTime = ref<Date | null>(null)
+const manualBreakTime = ref(0)
 const manualNote = ref('')
+
+// 下班打卡 Modal
+const showClockOutModal = ref(false)
+const clockOutBreakTime = ref(0)
 
 // 是否有未完成的打卡（只上班沒下班）
 const hasOpenRecord = computed(() => {
@@ -318,7 +383,7 @@ const handleClockIn = async () => {
 }
 
 // 下班打卡
-const handleClockOut = async () => {
+const confirmClockOut = async () => {
   if (!auth.user.value || !openRecord.value) return
 
   submitting.value = true
@@ -326,6 +391,7 @@ const handleClockOut = async () => {
   const res = await api.clockOut({
     phone: auth.user.value.phone,
     attendance_id: openRecord.value.id,
+    break_time: clockOutBreakTime.value,
   })
   submitting.value = false
   clockAction.value = null
@@ -336,10 +402,12 @@ const handleClockOut = async () => {
       record.clock_out = res.data.clock_out
       record.hours = res.data.hours
     }
+    showClockOutModal.value = false
+    clockOutBreakTime.value = 0
     toast.add({
       severity: 'success',
       summary: '下班打卡成功',
-      detail: `工作 ${res.data.hours} 小時`,
+      detail: `實際工時 ${res.data.hours.toFixed(2)} 小時`,
       life: 3000,
     })
   } else {
@@ -366,6 +434,7 @@ const handleManualAttendance = async () => {
     date: dateStr,
     clock_in: `${dateStr}T${formatTimeOnly(manualClockInTime.value)}:00`,
     clock_out: `${dateStr}T${formatTimeOnly(manualClockOutTime.value)}:00`,
+    break_time: manualBreakTime.value,
     note: manualNote.value,
   })
   submitting.value = false
@@ -384,6 +453,7 @@ const handleManualAttendance = async () => {
     manualMarket.value = null
     manualClockInTime.value = null
     manualClockOutTime.value = null
+    manualBreakTime.value = 0
     manualNote.value = ''
     // 如果補登的是今天，重新載入今日紀錄
     const todayStr = formatDate(new Date())
@@ -569,8 +639,24 @@ const handleManualAttendance = async () => {
 /* 補登表單 */
 .manual-form {
   margin-top: var(--space-md);
-  padding-top: var(--space-md);
-  border-top: 1px solid var(--color-border);
+  padding: var(--space-md);
+  background: rgba(251, 191, 36, 0.08);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--radius-md);
+}
+
+.manual-form-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-weight: 600;
+  color: var(--color-warning);
+  margin-bottom: var(--space-md);
+  font-size: 0.95rem;
+}
+
+.manual-form-header i {
+  font-size: 1.1rem;
 }
 
 .submit-btn {
@@ -600,5 +686,74 @@ const handleManualAttendance = async () => {
 .slide-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+/* Break Time Input */
+.break-time-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.quick-break-btns {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.quick-break-btns :deep(.p-button) {
+  flex: 1;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  z-index: 1000;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 360px;
+  padding: var(--space-lg);
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-xs);
+  text-align: center;
+}
+
+.modal-subtitle {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-md);
+  text-align: center;
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+
+.modal-actions :deep(.p-button) {
+  flex: 1;
+}
+
+/* Modal 動畫 */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
 }
 </style>
