@@ -95,7 +95,7 @@
         </div>
         <div class="summary-item">
           <span class="summary-label">總時數</span>
-          <span class="summary-value">{{ summary.total_hours.toFixed(1) }} 小時</span>
+          <span class="summary-value">{{ formatHoursToHM(summary.total_hours) }}</span>
         </div>
       </div>
 
@@ -133,7 +133,7 @@
                 </span>
               </div>
               <div class="hours-block">
-                <span class="hours-value">{{ record.hours.toFixed(1) }}h</span>
+                <span class="hours-value">{{ formatHoursToHM(record.hours) }}</span>
               </div>
             </div>
           </div>
@@ -314,6 +314,16 @@ function formatTimeOnly(date: Date): string {
   const h = String(date.getHours()).padStart(2, '0')
   const m = String(date.getMinutes()).padStart(2, '0')
   return `${h}:${m}`
+}
+
+// 格式化小時數為 X時Y分
+function formatHoursToHM(hours: number): string {
+  const totalMinutes = Math.round(hours * 60)
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  if (h === 0) return `${m}分鐘`
+  if (m === 0) return `${h}小時`
+  return `${h}小時${m}分鐘`
 }
 
 function parseTimeToDate(timeStr: string | null): Date | null {

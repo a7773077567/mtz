@@ -33,7 +33,7 @@
                   </span>
                 </div>
                 <div v-if="record.hours > 0" class="status-hours">
-                  共 {{ record.hours }} 小時
+                  共 {{ formatHoursToHM(record.hours) }}
                 </div>
               </div>
             </div>
@@ -289,6 +289,24 @@ const openRecord = computed(() => {
   return todayRecords.value.find(r => r.clock_in && !r.clock_out)
 })
 
+// 下班打卡最大可休息時間（分鐘）
+const maxClockOutBreak = computed(() => {
+  if (!openRecord.value?.clock_in) return 480
+  const clockIn = new Date(openRecord.value.clock_in)
+  const now = new Date()
+  const diffMinutes = Math.floor((now.getTime() - clockIn.getTime()) / 60000)
+  return Math.max(0, diffMinutes)
+})
+
+// 補登最大可休息時間（分鐘）
+const maxManualBreak = computed(() => {
+  if (!manualClockInTime.value || !manualClockOutTime.value) return 480
+  const diffMinutes = Math.floor(
+    (manualClockOutTime.value.getTime() - manualClockInTime.value.getTime()) / 60000
+  )
+  return Math.max(0, diffMinutes)
+})
+
 // 檢查登入
 if (!auth.isLoggedIn()) {
   router.push('/')
@@ -314,6 +332,16 @@ const formatTimeOnly = (date: Date): string => {
   const h = String(date.getHours()).padStart(2, '0')
   const m = String(date.getMinutes()).padStart(2, '0')
   return `${h}:${m}`
+}
+
+// 格式化小時數為 X時Y分
+const formatHoursToHM = (hours: number): string => {
+  const totalMinutes = Math.round(hours * 60)
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  if (h === 0) return `${m}分鐘`
+  if (m === 0) return `${h}小時`
+  return `${h}小時${m}分鐘`
 }
 
 // 載入資料
@@ -386,6 +414,17 @@ const handleClockIn = async () => {
 const confirmClockOut = async () => {
   if (!auth.user.value || !openRecord.value) return
 
+  // 驗證休息時間
+  if (clockOutBreakTime.value > maxClockOutBreak.value) {
+    toast.add({
+      severity: 'warn',
+      summary: '休息時間過長',
+      detail: `休息時間不能超過工作時間 (${maxClockOutBreak.value} 分鐘)`,
+      life: 4000,
+    })
+    return
+  }
+
   submitting.value = true
   clockAction.value = 'out'
   const res = await api.clockOut({
@@ -407,7 +446,7 @@ const confirmClockOut = async () => {
     toast.add({
       severity: 'success',
       summary: '下班打卡成功',
-      detail: `實際工時 ${res.data.hours.toFixed(2)} 小時`,
+      detail: `實際工時 ${formatHoursToHM(res.data.hours)}`,
       life: 3000,
     })
   } else {
@@ -423,6 +462,17 @@ const confirmClockOut = async () => {
 // 補登出勤
 const handleManualAttendance = async () => {
   if (!auth.user.value || !manualDateObj.value || !manualMarket.value || !manualClockInTime.value || !manualClockOutTime.value) return
+
+  // 驗證休息時間
+  if (manualBreakTime.value > maxManualBreak.value) {
+    toast.add({
+      severity: 'warn',
+      summary: '休息時間過長',
+      detail: `休息時間不能超過工作時間 (${maxManualBreak.value} 分鐘)`,
+      life: 4000,
+    })
+    return
+  }
 
   submitting.value = true
   clockAction.value = 'manual'
@@ -444,7 +494,7 @@ const handleManualAttendance = async () => {
     toast.add({
       severity: 'success',
       summary: '補登成功',
-      detail: `已補登 ${res.data.hours} 小時`,
+      detail: `已補登 ${formatHoursToHM(res.data.hours)}`,
       life: 3000,
     })
     // 重置表單

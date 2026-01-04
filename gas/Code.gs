@@ -341,6 +341,39 @@ function testLineNotification() {
 }
 
 /**
+ * 資料遷移：為舊資料補填「總分鐘」欄位
+ * 執行一次即可，在 GAS 編輯器直接執行
+ */
+function migrateAddMinutes() {
+  const sheet = getSheet(SHEET_ATTENDANCE);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  const hoursCol = headers.indexOf('時數');
+  const minutesCol = headers.indexOf('總分鐘');
+  
+  if (minutesCol === -1) {
+    Logger.log('錯誤：找不到「總分鐘」欄位，請先在 Sheet 新增此欄位');
+    return;
+  }
+  
+  let count = 0;
+  for (let i = 1; i < data.length; i++) {
+    const hours = data[i][hoursCol];
+    const currentMinutes = data[i][minutesCol];
+    
+    // 只補填空白或 0 的欄位
+    if (hours && (!currentMinutes || currentMinutes === 0)) {
+      const minutes = Math.round(hours * 60);
+      sheet.getRange(i + 1, minutesCol + 1).setValue(minutes);
+      count++;
+    }
+  }
+  
+  Logger.log(`遷移完成：已更新 ${count} 筆資料的總分鐘欄位`);
+}
+
+/**
  * 帶快取的 Sheet 讀取
  * 
  * 使用 GAS 的 CacheService 快取讀取結果，減少重複讀取 Sheet 的開銷。
@@ -852,6 +885,8 @@ function handleClockIn(request) {
     clockInTime,                 // 上班時間
     '',                          // 下班時間（留空）
     0,                           // 時數
+    0,                           // 總分鐘
+    0,                           // 休息時間（分鐘）
     is_manual ? '是' : '否',     // 補登
     note || '',                  // 備註
     createdAt,                   // 建立時間
@@ -912,6 +947,7 @@ function handleClockOut(request) {
   const clockInCol = headers.indexOf('上班時間');
   const clockOutCol = headers.indexOf('下班時間');
   const hoursCol = headers.indexOf('時數');
+  const minutesCol = headers.indexOf('總分鐘');
   const breakTimeCol = headers.indexOf('休息時間');
   const isManualCol = headers.indexOf('補登');
   const updatedByCol = headers.indexOf('修改者');
@@ -955,10 +991,17 @@ function handleClockOut(request) {
   // 更新下班時間與時數
   const clockOutTime = is_manual && manual_time ? new Date(manual_time) : new Date();
   const rawHours = calculateHours(clockInTime, clockOutTime);
-  const hours = Math.max(0, rawHours - (breakMinutes / 60)); // 扣除休息時間
+  const hoursRaw = Math.max(0, rawHours - (breakMinutes / 60)); // 扣除休息時間
+  const hours = Math.round(hoursRaw * 100) / 100; // 固定小數點第二位
+  const totalMinutes = Math.round(hoursRaw * 60); // 總分鐘數
   
   sheet.getRange(rowToUpdate, clockOutCol + 1).setValue(clockOutTime);
   sheet.getRange(rowToUpdate, hoursCol + 1).setValue(hours);
+  
+  // 寫入總分鐘（如果欄位存在）
+  if (minutesCol !== -1) {
+    sheet.getRange(rowToUpdate, minutesCol + 1).setValue(totalMinutes);
+  }
   
   // 寫入休息時間（如果欄位存在）
   if (breakTimeCol !== -1) {
@@ -979,13 +1022,20 @@ function handleClockOut(request) {
     
     const clockInStr = Utilities.formatDate(clockInTime, 'Asia/Taipei', 'HH:mm');
     const clockOutStr = Utilities.formatDate(clockOutTime, 'Asia/Taipei', 'HH:mm');
-    const hoursFormatted = hours.toFixed(2);
+    
+    // 格式化為 X時Y分
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    let hoursFormatted = '';
+    if (h === 0) hoursFormatted = `${m}分鐘`;
+    else if (m === 0) hoursFormatted = `${h}小時`;
+    else hoursFormatted = `${h}小時${m}分鐘`;
     
     let message = `🏠 ${user['名稱']} 已下班打卡\n📍 市場：${marketName}\n⏰ 時間：${clockInStr} ~ ${clockOutStr}`;
     if (breakMinutes > 0) {
       message += `\n☕ 休息：${breakMinutes} 分鐘`;
     }
-    message += `\n⏱️ 實際工時：${hoursFormatted} 小時`;
+    message += `\n⏱️ 實際工時：${hoursFormatted}`;
     sendLineNotification(message);
   }
   
@@ -1039,7 +1089,9 @@ function handleManualAttendance(request) {
   const clockInTime = new Date(clock_in);
   const clockOutTime = new Date(clock_out);
   const rawHours = calculateHours(clockInTime, clockOutTime);
-  const hours = Math.max(0, rawHours - (breakMinutes / 60)); // 扣除休息時間
+  const hoursRaw = Math.max(0, rawHours - (breakMinutes / 60)); // 扣除休息時間
+  const hours = Math.round(hoursRaw * 100) / 100; // 固定小數點第二位
+  const totalMinutes = Math.round(hoursRaw * 60); // 總分鐘數
   const createdAt = new Date();
   
   const sheet = getSheet(SHEET_ATTENDANCE);
@@ -1051,6 +1103,7 @@ function handleManualAttendance(request) {
     clockInTime,         // 上班時間
     clockOutTime,        // 下班時間
     hours,               // 時數（已扣除休息）
+    totalMinutes,        // 總分鐘
     breakMinutes,        // 休息時間
     '是',                // 補登 = 是
     note || '',          // 備註
@@ -1063,13 +1116,20 @@ function handleManualAttendance(request) {
   // 發送 Line 通知（補登也發）
   const clockInStr = Utilities.formatDate(clockInTime, 'Asia/Taipei', 'HH:mm');
   const clockOutStr = Utilities.formatDate(clockOutTime, 'Asia/Taipei', 'HH:mm');
-  const hoursFormatted = hours.toFixed(2);
+  
+  // 格式化為 X時Y分
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  let hoursFormatted = '';
+  if (h === 0) hoursFormatted = `${m}分鐘`;
+  else if (m === 0) hoursFormatted = `${h}小時`;
+  else hoursFormatted = `${h}小時${m}分鐘`;
   
   let message = `📝 ${user['名稱']} 補登出勤\n📍 市場：${market['名稱']}\n📅 日期：${date}\n⏰ 時間：${clockInStr} ~ ${clockOutStr}`;
   if (breakMinutes > 0) {
     message += `\n☕ 休息：${breakMinutes} 分鐘`;
   }
-  message += `\n⏱️ 實際工時：${hoursFormatted} 小時`;
+  message += `\n⏱️ 實際工時：${hoursFormatted}`;
   sendLineNotification(message);
   
   return { success: true, data: { id, hours } };
