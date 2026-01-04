@@ -8,18 +8,16 @@
         placeholder="0912345678"
         :maxlength="10"
         :disabled="props.loading"
-        :invalid="!!error"
         class="phone-input"
         @keyup.enter="handleSubmit"
       />
     </div>
-    <Transition name="fade">
-      <p v-if="error" class="error-message">{{ error }}</p>
-    </Transition>
     <Button
       :label="props.loading ? '驗證中...' : '登入'"
       :loading="props.loading"
       :disabled="!isValid || props.loading"
+      severity="secondary"
+      outlined
       class="submit-btn"
       @click="handleSubmit"
     />
@@ -37,10 +35,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   submit: [phone: string]
+  error: [message: string]
 }>()
 
 const phone = ref('')
-const error = ref('')
 
 // 台灣手機 10 碼驗證
 const isValid = computed(() => {
@@ -48,15 +46,13 @@ const isValid = computed(() => {
 })
 
 const handleSubmit = () => {
-  error.value = ''
-  
   if (!phone.value) {
-    error.value = '請輸入手機號碼'
+    emit('error', '請輸入手機號碼')
     return
   }
   
   if (!isValid.value) {
-    error.value = '請輸入有效的手機號碼（09開頭，共10碼）'
+    emit('error', '請輸入有效的手機號碼（09開頭，共10碼）')
     return
   }
   
@@ -64,11 +60,11 @@ const handleSubmit = () => {
 }
 
 // 接收外部錯誤
-const setError = (msg: string) => {
-  error.value = msg
+const showError = (msg: string) => {
+  emit('error', msg)
 }
 
-defineExpose({ setError })
+defineExpose({ showError })
 </script>
 
 <style scoped>
@@ -93,16 +89,26 @@ defineExpose({ setError })
   font-size: 1.125rem;
   letter-spacing: 0.05em;
   text-align: center;
-}
-
-.error-message {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--color-error);
+  --p-inputtext-focus-border-color: #78716c;
+  --p-inputtext-focus-ring-color: rgba(120, 113, 108, 0.25);
+  --p-inputtext-disabled-background: #fafaf9;
+  --p-inputtext-disabled-color: #a8a29e;
 }
 
 .submit-btn {
   width: 100%;
   margin-top: var(--space-sm);
+  /* 邊框與文字 - 石色 */
+  --p-button-outlined-secondary-border-color: #78716c;
+  --p-button-outlined-secondary-color: #44403c;
+  /* Hover - 淺灰背景 */
+  --p-button-outlined-secondary-hover-background: #78716c;
+  --p-button-outlined-secondary-hover-border-color: #78716c;
+  --p-button-outlined-secondary-hover-color: #ffffff;
+  /* Focus */
+  --p-button-focus-ring-color: rgba(120, 113, 108, 0.3);
+  /* Active */
+  --p-button-outlined-secondary-active-background: #57534e;
+  --p-button-outlined-secondary-active-border-color: #57534e;
 }
 </style>

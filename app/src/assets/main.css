@@ -178,6 +178,11 @@ body {
   }
 }
 
+/* 登入頁按鈕 hover 強制白字 */
+.p-button.p-button-outlined.p-button-secondary:not(:disabled):hover {
+  color: #ffffff !important;
+}
+
 .p-inputtext {
   border-radius: var(--radius-md) !important;
   min-height: 2.75rem !important;
