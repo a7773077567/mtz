@@ -143,6 +143,41 @@ body {
   font-size: 1rem !important;
 }
 
+/* Custom Button Loading Animation - 三點跳動 */
+.p-button.p-button-loading .p-button-icon {
+  display: none !important;
+}
+
+.p-button.p-button-loading .p-button-label::after {
+  content: '';
+  display: inline-flex;
+  margin-left: 0.5rem;
+  width: 2rem;
+  height: 0.5rem;
+  background-image: radial-gradient(circle, currentColor 30%, transparent 30%),
+                    radial-gradient(circle, currentColor 30%, transparent 30%),
+                    radial-gradient(circle, currentColor 30%, transparent 30%);
+  background-size: 0.4rem 0.4rem;
+  background-position: 0% 50%, 50% 50%, 100% 50%;
+  background-repeat: no-repeat;
+  animation: button-dots 1s ease-in-out infinite;
+}
+
+@keyframes button-dots {
+  0%, 100% {
+    background-position: 0% 50%, 50% 50%, 100% 50%;
+  }
+  25% {
+    background-position: 0% 30%, 50% 50%, 100% 50%;
+  }
+  50% {
+    background-position: 0% 50%, 50% 30%, 100% 50%;
+  }
+  75% {
+    background-position: 0% 50%, 50% 50%, 100% 30%;
+  }
+}
+
 .p-inputtext {
   border-radius: var(--radius-md) !important;
   min-height: 2.75rem !important;

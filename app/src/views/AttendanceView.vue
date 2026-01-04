@@ -229,6 +229,9 @@
       </div>
     </Transition>
 
+    <!-- 提交中蓋版 -->
+    <LoadingOverlay :visible="submitting" text="處理中..." />
+
     <Toast position="top-center" />
   </div>
 </template>
@@ -245,6 +248,7 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import AppHeader from '../components/AppHeader.vue'
 import ClockInSkeleton from '../components/ClockInSkeleton.vue'
+import LoadingOverlay from '../components/LoadingOverlay.vue'
 import TimeInput from '../components/TimeInput.vue'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'

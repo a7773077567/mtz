@@ -581,6 +581,18 @@ function handleSubmitRevenue(request) {
     "'" + phone              // 提交者手機（加單引號強制 Sheets 視為文字，保留開頭的 0）
   ]);
   
+  // 發送 Line 通知
+  const otherTotal = pFee + cFee + oCost;
+  let message = `💰 ${user['名稱']} 提交營業額\n📍 市場：${market['名稱']}\n📅 日期：${date}\n💵 營業額：$${numAmount.toLocaleString()}\n🏠 租金：$${numRent.toLocaleString()}`;
+  if (otherTotal > 0) {
+    message += `\n💸 其他支出：$${otherTotal.toLocaleString()}`;
+  }
+  message += `\n📊 利潤：$${profit.toLocaleString()}`;
+  if (note) {
+    message += `\n📝 備註：${note}`;
+  }
+  sendLineNotification(message);
+  
   return { success: true, data: { id: id } };
 }
 

@@ -17,6 +17,9 @@
       </Transition>
     </main>
 
+    <!-- 提交中蓋版 -->
+    <LoadingOverlay :visible="submitting" text="提交中..." />
+
     <!-- Toast for success message -->
     <Toast position="top-center" />
   </div>
@@ -29,6 +32,7 @@ import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 import AppHeader from '../components/AppHeader.vue'
 import FormSkeleton from '../components/FormSkeleton.vue'
+import LoadingOverlay from '../components/LoadingOverlay.vue'
 import RevenueForm from '../components/RevenueForm.vue'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
